@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const axiosInstance = axios.create({
-  baseURL: "http://localhost:5000/api/v1", // Replace with your API base URL
+  baseURL: "https://synctalk.onrender.com/api/v1", // Replace with your API base URL
   timeout: 5000, // Timeout after 5 seconds
   headers: {
     "Content-Type": "application/json",
