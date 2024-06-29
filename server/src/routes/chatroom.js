@@ -1,7 +1,7 @@
 // routes/chatrooms.js
 const express = require("express");
 const router = express.Router();
-const isAuthenticated = require("../middleware/isAuthenticated");
+const { isAuthenticated } = require("../middleware");
 const ChatRoom = require("../models/ChatRoom");
 const User = require("../models/User");
 const { HttpStatusCode, CustomError } = require("../lib/util");

@@ -3,8 +3,7 @@ const userRouter = require("./user");
 const chatRoomRouter = require("./chatroom");
 const messagesRoutes = require("./message");
 const adminRoutes = require("./admin");
-const isAdmin = require("../middleware/isAdmin");
-const isAuthenticated = require("../middleware/isAuthenticated");
+const { isAuthenticated, isAdmin } = require("../middleware");
 const router = express.Router();
 
 router.use("/user", userRouter);

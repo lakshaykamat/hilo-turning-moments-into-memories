@@ -4,10 +4,9 @@ const bodyParser = require("body-parser");
 const morgan = require("morgan");
 const cors = require("cors");
 const apiRoutes = require("./routes/index");
-const errorHandler = require("./middleware/errorHandler");
-const notFound = require("./middleware/notFound");
+const { errorHandler, notFound } = require("./middleware");
 const logger = require("./config/logger");
-const { getGeoLocation, getSystemInfo } = require("./lib/util");
+const { getGeoLocation, getSystemInfo, getCurrentTime } = require("./lib/util");
 const connectDatabase = require("./config/mongoDB");
 const path = require("path");
 const fs = require("fs");
@@ -32,16 +31,6 @@ app.use(notFound);
 app.use(errorHandler);
 
 app.listen(PORT, async () => {
-  function getCurrentTime() {
-    const now = new Date();
-    const hours = String(now.getHours()).padStart(2, "0");
-    const minutes = String(now.getMinutes()).padStart(2, "0");
-    const seconds = String(now.getSeconds()).padStart(2, "0");
-    return `${now.getDate()}-${
-      now.getMonth() + 1
-    }-${now.getFullYear()} ${hours}:${minutes}:${seconds}`;
-  }
-
   const getGeo = await getGeoLocation();
   const getSys = await getSystemInfo();
   logger.info(
