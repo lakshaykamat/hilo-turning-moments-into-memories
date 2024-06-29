@@ -1,31 +1,28 @@
 const express = require("express");
-const logger = require("../config/logger");
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const { HttpStatusCode, CustomError } = require("../lib/util");
+const isAuthenticated = require("../middleware/isAuthenticated");
 
 const router = express.Router();
 
 /**
- * @route GET /api/v1/users
- * @description Get all users
- * @access Public
+ * @route GET /api/v1/user
+ * @description Get all users except the logged-in user
+ * @access Private
  */
-router.get("/", async (req, res, next) => {
+router.get("/", isAuthenticated, async (req, res, next) => {
   try {
-    // Fetch all users from the database
-    const allUsers = await User.find();
-
-    // Respond with a JSON array of all users
+    const allUsers = await User.find({ _id: { $ne: req.user.id } });
     res.status(HttpStatusCode.OK).json(allUsers);
   } catch (error) {
-    // Pass any errors to the error-handling middleware
     next(error);
   }
 });
 
 /**
- * @route POST /api/register
+ * @route POST /api/v1/user/register
  * @description Register a new user
  * @access Public
  */
@@ -36,24 +33,19 @@ router.post("/register", async (req, res, next) => {
     if (!name || !username || !password || !email || !profilePicture) {
       throw new CustomError(
         HttpStatusCode.BAD_REQUEST,
-        "Fields are required (name,username,password,email,avatar"
+        "Fields are required (name, username, password, email, profilePicture)"
       );
     }
-    // Check if the username or email already exists
+
     let existingUser = await User.findOne({ $or: [{ username }, { email }] });
 
     if (existingUser) {
-      throw CustomError(
+      throw new CustomError(
         HttpStatusCode.CONFLICT,
         "Username or email already exists"
       );
     }
 
-    // Hash the password
-    // const salt = await bcrypt.genSalt(10);
-    // const hashedPassword = await bcrypt.hash(password, salt);
-
-    // Create a new user instance
     const newUser = new User({
       name,
       username,
@@ -62,7 +54,6 @@ router.post("/register", async (req, res, next) => {
       profilePicture,
     });
 
-    // Save the user to the database
     const savedUser = await newUser.save();
 
     res.status(HttpStatusCode.CREATED).json(savedUser);
@@ -70,4 +61,51 @@ router.post("/register", async (req, res, next) => {
     next(error);
   }
 });
+
+/**
+ * @route POST /api/v1/user/login
+ * @description Login user and return JWT token
+ * @access Public
+ */
+router.post("/login", async (req, res, next) => {
+  const { username, password } = req.body;
+
+  try {
+    // Check if the username exists
+    const user = await User.findOne({ username });
+
+    if (!user) {
+      throw new CustomError(HttpStatusCode.NOT_FOUND, "User not found");
+    }
+
+    // Validate password
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      throw new CustomError(HttpStatusCode.UNAUTHORIZED, "Invalid credentials");
+    }
+
+    // Create JWT payload
+    const payload = {
+      user: {
+        id: user._id,
+        username: user.username,
+      },
+    };
+
+    // Sign the token
+    jwt.sign(
+      payload,
+      process.env.JWT_SECRET,
+      { expiresIn: "30h" }, // Token expires in 30 hour
+      (err, token) => {
+        if (err) throw err;
+        res.json({ user, token });
+      }
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;
