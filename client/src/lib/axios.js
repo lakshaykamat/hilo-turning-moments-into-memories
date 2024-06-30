@@ -1,7 +1,10 @@
 import axios from "axios";
 
+const LOCAL_URL = "http://localhost:5000/api/v1";
+const REMOTE_SERVER_URL = "https://synctalk.onrender.com/api/v1";
+
 const axiosInstance = axios.create({
-  baseURL: "https://synctalk.onrender.com/api/v1", // Replace with your API base URL
+  baseURL: REMOTE_SERVER_URL, // TODO Replace with your API base URL
   timeout: 5000, // Timeout after 5 seconds
   headers: {
     "Content-Type": "application/json",
@@ -9,10 +12,13 @@ const axiosInstance = axios.create({
   },
 });
 
-// Optional: Add interceptors for request and response
+// Add a request interceptor to include the auth token
 axiosInstance.interceptors.request.use(
   (config) => {
-    // Modify request config here (e.g., add authorization token)
+    const user = JSON.parse(localStorage.getItem("authToken"));
+    if (user) {
+      config.headers["Authorization"] = `Bearer ${user.token}`;
+    }
     return config;
   },
   (error) => {
