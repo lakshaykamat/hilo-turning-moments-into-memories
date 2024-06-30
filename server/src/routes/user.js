@@ -2,7 +2,7 @@ const express = require("express");
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { HttpStatusCode, CustomError } = require("../lib/util");
+const { HttpStatusCode, CustomError, getGravatar } = require("../lib/util");
 const { isAuthenticated } = require("../middleware");
 
 const router = express.Router();
@@ -27,13 +27,13 @@ router.get("/", isAuthenticated, async (req, res, next) => {
  * @access Public
  */
 router.post("/register", async (req, res, next) => {
-  const { name, username, password, email, profilePicture } = req.body;
+  const { name, username, password, email } = req.body;
 
   try {
-    if (!name || !username || !password || !email || !profilePicture) {
+    if (!name || !username || !password || !email) {
       throw new CustomError(
         HttpStatusCode.BAD_REQUEST,
-        "Fields are required (name, username, password, email, profilePicture)"
+        "Fields are required (name, username, password, email)"
       );
     }
 
@@ -51,12 +51,41 @@ router.post("/register", async (req, res, next) => {
       username,
       password,
       email,
-      profilePicture,
+      profilePicture: getGravatar(email),
     });
 
     const savedUser = await newUser.save();
 
-    res.status(HttpStatusCode.CREATED).json(savedUser);
+    // Create JWT payload
+    const payload = {
+      user: {
+        id: savedUser._id,
+        username: savedUser.username,
+      },
+    };
+
+    const response = {
+      _id: savedUser._id,
+      name: savedUser.name,
+      email: savedUser.email,
+      username: savedUser.username,
+      profilePicture: savedUser.profilePicture,
+      status: savedUser.status,
+      role: savedUser.role,
+      friends: savedUser.friends,
+      createdAt: savedUser.createdAt,
+      createdAt: savedUser.updatedAt,
+    };
+    // Sign the token
+    jwt.sign(
+      payload,
+      process.env.JWT_SECRET,
+      { expiresIn: "30h" }, // Token expires in 30 hour
+      (err, token) => {
+        if (err) throw err;
+        res.status(HttpStatusCode.OK).json({ ...response, token });
+      }
+    );
   } catch (error) {
     next(error);
   }
@@ -85,6 +114,19 @@ router.post("/login", async (req, res, next) => {
       throw new CustomError(HttpStatusCode.UNAUTHORIZED, "Invalid credentials");
     }
 
+    const response = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      username: user.username,
+      profilePicture: user.profilePicture,
+      status: user.status,
+      role: user.role,
+      friends: user.friends,
+      createdAt: user.createdAt,
+      createdAt: user.updatedAt,
+    };
+
     // Create JWT payload
     const payload = {
       user: {
@@ -100,7 +142,7 @@ router.post("/login", async (req, res, next) => {
       { expiresIn: "30h" }, // Token expires in 30 hour
       (err, token) => {
         if (err) throw err;
-        res.json({ user, token });
+        res.json({ ...response, token });
       }
     );
   } catch (error) {

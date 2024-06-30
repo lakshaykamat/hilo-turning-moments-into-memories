@@ -1,5 +1,13 @@
 const axios = require("axios");
 const os = require("os");
+const crypto = require("crypto");
+const gravatarUrl = require("gravatar-url");
+
+const getGravatar = (email) => {
+  // Generate Gravatar URL
+  const url = gravatarUrl(email, { size: 200, default: "identicon" });
+  return url;
+};
 
 const HttpStatusCode = Object.freeze({
   OK: 200,
@@ -70,4 +78,5 @@ module.exports = {
   getGeoLocation,
   getSystemInfo,
   getCurrentTime,
+  getGravatar,
 };
