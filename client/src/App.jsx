@@ -26,15 +26,12 @@ const App = () => {
         {!isLoginPage ? <Sidebar /> : <NavBar />}
         <div className="flex-grow">
           {!isLoginPage && <TopBar />}
-          <main className="px-8 py-8 md:ml-[18rem]">
-            <Switch>
-              <Route exact path="/" component={HomePage} />
-              <Route path="/login" component={LoginPage} />
-              <Route path="/posts/:postId" component={PostPage} />
-              <Route path="/profile" component={ProfilePage} />
-              <Route path="/settings" component={SettingsPage} />
-              <Route path="*" component={NotFoundPage} />
-            </Switch>
+          <main className={`px-8 py-8 ${!isLoginPage && "md:ml-[18rem]"}`}>
+            <Route exact path="/" component={HomePage} />
+            <Route path="/login" component={LoginPage} />
+            <Route path="/posts/:postId" component={PostPage} />
+            <Route path="/profile" component={ProfilePage} />
+            <Route path="/settings" component={SettingsPage} />
           </main>
         </div>
         {!isLoginPage && <BottomBar />}

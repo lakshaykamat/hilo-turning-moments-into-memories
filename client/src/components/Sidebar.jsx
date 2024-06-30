@@ -28,28 +28,6 @@ import { useToast } from "./ui/use-toast";
 import { useHistory } from "react-router-dom";
 import { ToastAction } from "./ui/toast";
 
-const SIDEBAR_ITEMS = [
-  {
-    icon: <Home />,
-    name: "Home",
-    url: "/",
-  },
-  {
-    icon: <Pen />,
-    name: "Create Post",
-    url: "/",
-  },
-  {
-    icon: <User />,
-    name: "User",
-    url: "/profile",
-  },
-  {
-    icon: <Settings />,
-    name: "Setting",
-    url: "/settings",
-  },
-];
 const Sidebar = () => {
   const [postContent, setPostContent] = useState("");
   const [isLoading, setLoading] = useState(false);
@@ -154,43 +132,97 @@ const Sidebar = () => {
   );
 };
 const BottomBar = () => {
-  const location = useLocation();
-  return (
-    <div className="fixed bottom-0 flex md:hidden">
-      <div className="flex items-center justify-center w-full gap-12 bg-card drop-shadow">
-        {SIDEBAR_ITEMS.map((item) => {
-          return (
-            <a
-              href={item.url}
-              className={`flex flex-col items-center text-sm justify-center py-3 rounded px-3 sm:px-7 ${
-                location.pathname === item.url
-                  ? "bg-primary text-white"
-                  : "hover:bg-secondary"
-              }`}
-            >
-              {item.icon}
-              <span>{item.name}</span>
-            </a>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
+  const [postContent, setPostContent] = useState("");
+  const [isLoading, setLoading] = useState(false);
+  const { toast } = useToast();
 
-const SideBarItem = ({ icon, name, url, onClick }) => {
+  const createPost = async () => {
+    setLoading(true);
+    if (!postContent) return;
+    try {
+      const response = await axiosInstance.post("/postss", {
+        content: postContent,
+      });
+      if (response.data) {
+        toast({
+          title: "Post uploaded",
+          description: "Check profile",
+          action: <ToastAction altText="View Post">View Post</ToastAction>,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: error.response?.data?.message || error.message,
+        description: "Failed To Upload",
+      });
+      console.log(error);
+    }
+    setLoading(false);
+  };
   const location = useLocation();
   return (
-    <div onClick={onClick}>
-      <a
-        href={url}
-        className={`${
-          location.pathname === url && "bg-primary text-white"
-        } flex gap-2 p-3 rounded hover:cursor-pointer hover:outline-2 hover:outline outline-gray-300`}
-      >
-        {icon}
-        <span className="font-">{name}</span>
-      </a>
+    <div className="fixed bottom-0 flex w-full md:hidden">
+      <div className="flex items-center justify-center w-full gap-12 bg-card drop-shadow">
+        <a
+          href="/"
+          className={`flex flex-col items-center text-sm justify-center py-4 rounded px-3 sm:px-7 ${
+            location.pathname === "/"
+              ? "bg-primary text-white"
+              : "hover:bg-secondary"
+          }`}
+        >
+          <Home />
+        </a>
+
+        <Dialog>
+          <DialogTrigger>
+            <div
+              className={`flex flex-col items-center text-sm justify-center py-4 rounded px-3 sm:px-7`}
+            >
+              <Pen />
+            </div>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="mb-3 text-2xl">Create Post</DialogTitle>
+              <DialogDescription className="flex flex-col gap-3 my-4">
+                <Textarea
+                  className="text-primary"
+                  value={postContent}
+                  onChange={(e) => setPostContent(e.target.value)}
+                  placeholder="Share your thougts..."
+                />
+                <DialogClose asChild>
+                  <Button onClick={createPost} disabled={isLoading}>
+                    {isLoading ? "Uploading..." : "Upload"}
+                  </Button>
+                </DialogClose>
+              </DialogDescription>
+            </DialogHeader>
+          </DialogContent>
+        </Dialog>
+
+        <a
+          href="/profile"
+          className={`flex flex-col items-center text-sm justify-center py-4 rounded px-3 sm:px-7 ${
+            location.pathname === "/profile"
+              ? "bg-primary text-white"
+              : "hover:bg-secondary"
+          }`}
+        >
+          <User />
+        </a>
+        <a
+          href="/settings"
+          className={`flex flex-col items-center text-sm justify-center py-4 rounded px-3 sm:px-7 ${
+            location.pathname === "/settings"
+              ? "bg-primary text-white"
+              : "hover:bg-secondary"
+          }`}
+        >
+          <Settings />
+        </a>
+      </div>
     </div>
   );
 };
