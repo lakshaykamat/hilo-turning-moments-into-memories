@@ -74,6 +74,7 @@ const PostPage = ({ params }: { params: { postId: string } }) => {
       });
       if (response.data) {
         mutate();
+        //@ts-ignore
         setPostState((prev) => ({
           ...prev,
           commentText: "",
@@ -93,29 +94,6 @@ const PostPage = ({ params }: { params: { postId: string } }) => {
 
     return (
       <>
-        <NextSeo
-          title={`My Blog`}
-          // description={data.excerpt}
-          // openGraph={{
-          //   type: 'article',
-          //   url: `http://localhost:3000/posts/${params.postId}`,
-          //   title: data.title,
-          //   description: data.excerpt,
-          //   images: [
-          //     {
-          //       url: data.image,
-          //       width: 800,
-          //       height: 600,
-          //       alt: `${data.title} image`,
-          //     },
-          //   ],
-          // }}
-          // twitter={{
-          //   handle: '@handle',
-          //   site: '@site',
-          //   cardType: 'summary_large_image',
-          // }}
-        />
         <div className="max-w-xl mx-auto p-4">
           <Card className="p-5 mb-7">
             <div className="flex gap-3 items-start mb-4">

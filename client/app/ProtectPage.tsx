@@ -15,7 +15,7 @@ const AuthLayout = ({ children }: AuthLayoutProps) => {
     if (!user) {
       router.push("/login");
     }
-  }, [user]);
+  }, [user, router]);
 
   return <>{children}</>;
 };

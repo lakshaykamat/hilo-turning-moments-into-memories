@@ -43,9 +43,9 @@ const CommentComponent = ({ content, author, replies }: CommentProps) => (
       <Heart className="w-4" />
     </div>
     <div className="ml-14">
-      {replies.map((reply) => (
+      {replies.map((reply, i) => (
         <div
-          key={reply.id}
+          key={i}
           className="mb-2 p-5 flex gap-3 items-center justify-between drop-shadow bg-secondary rounded"
         >
           <div className="flex items-start gap-3">

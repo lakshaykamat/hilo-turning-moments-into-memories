@@ -21,6 +21,11 @@ router.post("/", isAuthenticated, async (req, res, next) => {
       author: req.user.id,
     });
     await post.save();
+
+    const user = await User.findById(req.user.id);
+    user.posts.push(post._id);
+    await user.save();
+
     res.status(HttpStatusCode.CREATED).json(await post.formatPost());
   } catch (error) {
     next(error);

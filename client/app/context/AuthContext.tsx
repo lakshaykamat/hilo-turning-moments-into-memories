@@ -14,6 +14,9 @@ import React, {
 interface AuthContextProps {
   user: User | null;
   login: (username: string, password: string) => Promise<any>;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>;
+  setUserAuth: React.Dispatch<React.SetStateAction<User | null>>;
+  setNewProfilePhoto: (url: string) => Promise<void>;
   register: (
     name: string,
     username: string,
@@ -50,6 +53,26 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     if (!userInfo) router.push("/login");
   }, [router]);
+
+  const setNewProfilePhoto = async (url: string) => {
+    if (!url || !userAuth) return;
+    try {
+      const response = await axiosInstance.put(
+        "/users/change-profile-picture",
+        { image: url }
+      );
+      console.log(response);
+      if (response.data) {
+        const newUser = {
+          ...userAuth,
+          profilePicture: url,
+        };
+        setUserAuth(newUser);
+        LocalStorageHandler.addUserToken(newUser);
+        router.push("/profile");
+      }
+    } catch (error) {}
+  };
 
   const login = async (username: string, password: string): Promise<any> => {
     try {
@@ -97,8 +120,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user: userAuth, register, logout, login }}>
+    <AuthContext.Provider
+      value={{
+        user: userAuth,
+        setUser: setUserAuth,
+        setUserAuth,
+        register,
+        logout,
+        login,
+        setNewProfilePhoto,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
+
+export default AuthProvider;

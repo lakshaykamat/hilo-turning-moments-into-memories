@@ -1,4 +1,5 @@
 "use client";
+import PostCard from "@/components/PostCard";
 import { Card } from "@/components/ui/card";
 import { fetcher } from "@/lib/utils";
 import { Post } from "@/types/Post";
@@ -7,11 +8,12 @@ import React from "react";
 import useSWR from "swr";
 
 const ProfilePageOfUser = ({ params }: { params: { userId: string } }) => {
-  const { data, isLoading, error } = useSWR(`/users/${params.userId}`, fetcher);
+  const { data, isLoading, error } = useSWR(`/users/${params.userId}`, fetcher); //Fetch user details by userID
 
   if (isLoading) return <h1>Loading...</h1>;
   if (error) return <h1>Error...</h1>;
   if (data) {
+    console.log(data);
     return (
       <>
         <h1 className="text-4xl font-bold mb-7">Profile</h1>
@@ -31,73 +33,30 @@ const ProfilePageOfUser = ({ params }: { params: { userId: string } }) => {
             <h4 className="mb-4 text-2xl font-semibold">Posts</h4>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {/* <div className="flex flex-wrap items-start gap-6"> */}
-              {data.posts.map((post: Post) => (
-                <PostCard
-                  key={post.id}
-                  postId={post.id}
-                  content={post.content}
-                  commentsCount={post.comments.length}
-                  likesCount={post.likes.length}
-                  profilePicture={data.profilePicture}
-                />
-              ))}
+              {data.posts.map((post: Post) => {
+                const author = {
+                  name: data.name,
+                  profilePicture: data.profilePicture,
+                  username: data.username,
+                };
+                return (
+                  <PostCard
+                    key={post.id}
+                    shareCount={post.shares}
+                    postId={post.id}
+                    content={post.content}
+                    commentsCount={post.comments.length}
+                    likesCount={post.likes.length}
+                    author={author}
+                  />
+                );
+              })}
             </div>
           </div>
         </div>
       </>
     );
   }
-};
-
-type Postprops = {
-  postId: string;
-  profilePicture: string;
-  likesCount: number;
-  commentsCount: number;
-  content: string;
-};
-const PostCard = (props: Postprops) => {
-  const truncateText = (str: string, num: number) => {
-    return str.length > num ? str.slice(0, num) + "..." : str;
-  };
-  const text = truncateText(props.content, 25);
-  const htmlText = text.replace(/\n/g, "<br>");
-  return (
-    <a href={`/posts/${props.postId}`}>
-      <Card className="flex flex-col justify-center gap-6 p-5">
-        <div className="flex items-start gap-3">
-          <img
-            className="w-10 rounded-full"
-            src={props.profilePicture}
-            alt=""
-          />
-          <div>
-            <h3 className="text-lg font-semibold">Lakshay</h3>
-            <p
-              className="break-words text-balance break-word"
-              style={{ wordBreak: "break-word" }}
-              dangerouslySetInnerHTML={{ __html: htmlText }}
-            />
-          </div>
-        </div>
-        <div className="flex items-end justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Heart />
-              <span>{props.likesCount}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <MessageSquare />
-              <span>{props.commentsCount}</span>
-            </div>
-          </div>
-          <div className="flex items-center">
-            <Share2 />
-          </div>
-        </div>
-      </Card>
-    </a>
-  );
 };
 
 export default ProfilePageOfUser;

@@ -1,5 +1,4 @@
 "use client";
-// import type { Metadata } from "next";
 import { usePathname } from "next/navigation";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -7,7 +6,7 @@ import { BottomBar, Sidebar } from "@/components/Sidebar";
 import NavBar from "@/components/NavBar";
 import TopBar from "@/components/TopBar";
 import { Toaster } from "@/components/ui/toaster";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "@/components/theme-provider";
 import AuthLayout from "./ProtectPage";
 

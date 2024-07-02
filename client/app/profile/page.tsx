@@ -6,7 +6,7 @@ import React from "react";
 import useSWR from "swr";
 import { useAuth } from "../context/AuthContext";
 import { Post } from "@/types/Post";
-import { PostCard } from "../page";
+import PostCard from "@/components/PostCard";
 
 const ProfilePage = () => {
   const { user } = useAuth();
@@ -39,6 +39,7 @@ const ProfilePage = () => {
                 data.posts.map((post: Post) => (
                   <PostCard
                     key={post.id}
+                    shareCount={post.shares}
                     postId={post.id}
                     author={post.author}
                     likesCount={post.likes?.length || 0}
