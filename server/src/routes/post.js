@@ -3,6 +3,7 @@ const router = express.Router();
 const Post = require("../models/Post");
 const { HttpStatusCode, CustomError } = require("../lib/util");
 const { isAuthenticated } = require("../middleware");
+const User = require("../models/User");
 
 /**
  * @route POST /api/v1/post
@@ -20,7 +21,7 @@ router.post("/", isAuthenticated, async (req, res, next) => {
       author: req.user.id,
     });
     await post.save();
-    res.status(HttpStatusCode.CREATED).json(post.formatPost());
+    res.status(HttpStatusCode.CREATED).json(await post.formatPost());
   } catch (error) {
     next(error);
   }
@@ -36,7 +37,32 @@ router.post("/", isAuthenticated, async (req, res, next) => {
 router.get("/", async (req, res, next) => {
   try {
     const posts = await Post.findAll().sort({ createdAt: -1 });
-    res.status(HttpStatusCode.OK).json(posts.map((post) => post.formatPost()));
+    const formattedPosts = await Promise.all(
+      posts.map((post) => post.formatPost())
+    );
+
+    res.status(HttpStatusCode.OK).json(formattedPosts);
+  } catch (error) {
+    next(error);
+  }
+});
+/**
+ * @route GET /api/v1/post
+ * @description Display all posts
+ * @access Public
+ * @returns {object} - 201 Array of  post objects.
+ * @throws {CustomError} - If there are database issues.
+ */
+router.get("/user", isAuthenticated, async (req, res, next) => {
+  try {
+    const posts = await Post.find({ author: req.user._id }).sort({
+      createdAt: -1,
+    });
+    const formattedPosts = await Promise.all(
+      posts.map((post) => post.formatPost())
+    );
+
+    res.status(HttpStatusCode.OK).json(formattedPosts);
   } catch (error) {
     next(error);
   }
@@ -57,7 +83,28 @@ router.get("/:postId", async (req, res, next) => {
     if (!post) {
       throw new CustomError(HttpStatusCode.NOT_FOUND, "Post not found");
     }
-    res.status(HttpStatusCode.OK).json(post.formatPost());
+    res.status(HttpStatusCode.OK).json(await post.formatPost());
+  } catch (error) {
+    next(error);
+  }
+});
+/**
+ * @route GET /api/v1/post/:postId/like
+ * @description Display a specific post by ID
+ * @access Public
+ * @param {string} postId - Id of the post.
+ * @returns {object} - 201 Returns a post object.
+ * @throws {CustomError} - If there are database issues.
+ */
+router.post("/:postId/like", isAuthenticated, async (req, res, next) => {
+  const { postId } = req.params;
+  try {
+    const post = await Post.findById(postId);
+    if (!post) {
+      throw new CustomError(HttpStatusCode.NOT_FOUND, "Post not found");
+    }
+    await post.togglePostLike(req.user._id);
+    res.status(HttpStatusCode.OK).json({ count: post.likes.length });
   } catch (error) {
     next(error);
   }
@@ -84,10 +131,24 @@ router.post("/:postId/comments", isAuthenticated, async (req, res, next) => {
     if (!post) {
       throw new CustomError(HttpStatusCode.NOT_FOUND, "Post not found");
     }
-    await post.addComment(content, req.user.id);
-    res
-      .status(HttpStatusCode.OK)
-      .json({ message: "Comment added successfully" });
+    const addedComment = await post.addComment(content, req.user._id);
+
+    // Fetch the author's username for the added comment
+    const author = await User.findById(addedComment.author).select("username");
+    const formattedComment = {
+      id: addedComment._id,
+      content: addedComment.content,
+      author: {
+        id: addedComment.author,
+        username: author.username,
+        profilePicture: author.profilePicture,
+      },
+      likes: addedComment.likes,
+      replies: [],
+      createdAt: addedComment.createdAt,
+    };
+
+    res.status(HttpStatusCode.OK).json(formattedComment);
   } catch (error) {
     next(error);
   }
@@ -109,7 +170,7 @@ router.post(
       if (!post) {
         throw new CustomError(HttpStatusCode.NOT_FOUND, "Post not found");
       }
-      await post.addReply(commentId, content, req.user.id);
+      await post.addReply(commentId, content, req.user._id);
       res
         .status(HttpStatusCode.OK)
         .json({ message: "Reply added successfully" });
@@ -159,7 +220,7 @@ router.post(
       if (!post) {
         throw new CustomError(HttpStatusCode.NOT_FOUND, "Post not found");
       }
-      await post.toggleReplyLike(commentId, replyId, req.user.id);
+      await post.toggleReplyLike(commentId, replyId, req.user._id);
       res
         .status(HttpStatusCode.OK)
         .json({ message: "Reply like toggled successfully" });
@@ -168,5 +229,25 @@ router.post(
     }
   }
 );
+
+/**
+ * @route POST /api/v1/post/:postId/share
+ * @description Share post to and increase share count on post
+ * @access Private
+ */
+router.post("/:postId/share", isAuthenticated, async (req, res, next) => {
+  const { postId } = req.params;
+  try {
+    const post = await Post.findById(postId);
+    if (!post) {
+      throw new CustomError(HttpStatusCode.NOT_FOUND, "Post not found");
+    }
+    post.shares += 1;
+    await post.save();
+    res.status(HttpStatusCode.OK).json({ message: `Shared: ${post.shares}` });
+  } catch (error) {
+    next(error);
+  }
+});
 
 module.exports = router;

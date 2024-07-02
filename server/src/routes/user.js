@@ -4,11 +4,12 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { HttpStatusCode, CustomError, getGravatar } = require("../lib/util");
 const { isAuthenticated } = require("../middleware");
+const Post = require("../models/Post");
 
 const router = express.Router();
 
 /**
- * @route GET /api/v1/user
+ * @route GET /api/v1/users
  * @description Get all users except the logged-in user
  * @access Private
  */
@@ -22,7 +23,39 @@ router.get("/", isAuthenticated, async (req, res, next) => {
 });
 
 /**
- * @route POST /api/v1/user/register
+ * @route GET /api/v1/users/:userId
+ * @description Get a user by ID and populate posts
+ * @access Private
+ */
+router.get("/:userId", isAuthenticated, async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const user = await User.findById(userId).populate("posts");
+
+    if (!user) {
+      return res
+        .status(HttpStatusCode.NOT_FOUND)
+        .json({ message: "User not found" });
+    }
+
+    // Format the posts
+    const formattedPosts = await Promise.all(
+      user.posts.map(async (post) => await post.formatPost())
+    );
+
+    const formattedUser = {
+      ...user.toObject(),
+      posts: formattedPosts,
+    };
+
+    res.status(HttpStatusCode.OK).json(formattedUser);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @route POST /api/v1/users/register
  * @description Register a new user
  * @access Public
  */
@@ -74,13 +107,14 @@ router.post("/register", async (req, res, next) => {
       role: savedUser.role,
       friends: savedUser.friends,
       createdAt: savedUser.createdAt,
-      createdAt: savedUser.updatedAt,
+      updatedAt: savedUser.updatedAt,
     };
+
     // Sign the token
     jwt.sign(
       payload,
       process.env.JWT_SECRET,
-      { expiresIn: "30h" }, // Token expires in 30 hour
+      { expiresIn: "30h" }, // Token expires in 30 hours
       (err, token) => {
         if (err) throw err;
         res.status(HttpStatusCode.OK).json({ ...response, token });
@@ -92,7 +126,7 @@ router.post("/register", async (req, res, next) => {
 });
 
 /**
- * @route POST /api/v1/user/login
+ * @route POST /api/v1/users/login
  * @description Login user and return JWT token
  * @access Public
  */
@@ -124,7 +158,7 @@ router.post("/login", async (req, res, next) => {
       role: user.role,
       friends: user.friends,
       createdAt: user.createdAt,
-      createdAt: user.updatedAt,
+      updatedAt: user.updatedAt,
     };
 
     // Create JWT payload
@@ -139,7 +173,7 @@ router.post("/login", async (req, res, next) => {
     jwt.sign(
       payload,
       process.env.JWT_SECRET,
-      { expiresIn: "30h" }, // Token expires in 30 hour
+      { expiresIn: "30h" }, // Token expires in 30 hours
       (err, token) => {
         if (err) throw err;
         res.json({ ...response, token });
@@ -149,5 +183,30 @@ router.post("/login", async (req, res, next) => {
     next(error);
   }
 });
+
+router.put(
+  "/change-profile-picture",
+  isAuthenticated,
+  async (req, res, next) => {
+    const { image } = req.body;
+
+    try {
+      const user = await User.findById(req.user._id);
+      if (!user) {
+        throw new CustomError(HttpStatusCode.NOT_FOUND, "User not found");
+      }
+
+      user.profilePicture = image;
+      await user.save();
+
+      res.status(HttpStatusCode.OK).json({
+        message: "Profile picture updated successfully",
+        profilePicture: user.profilePicture,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 module.exports = router;

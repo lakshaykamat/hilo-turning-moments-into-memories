@@ -1,6 +1,5 @@
 const axios = require("axios");
 const os = require("os");
-const crypto = require("crypto");
 const gravatarUrl = require("gravatar-url");
 
 const getGravatar = (email) => {

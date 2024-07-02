@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const User = require("./User");
 const Schema = mongoose.Schema;
 
 // Define Comment schema
@@ -11,6 +12,7 @@ const CommentSchema = new Schema({
       content: { type: String, required: true },
       author: { type: Schema.Types.ObjectId, ref: "User", required: true },
       createdAt: { type: Date, default: Date.now },
+      likes: [{ type: Schema.Types.ObjectId, ref: "User" }],
     },
   ],
   createdAt: { type: Date, default: Date.now },
@@ -22,6 +24,7 @@ const PostSchema = new Schema({
   author: { type: Schema.Types.ObjectId, ref: "User", required: true },
   likes: [{ type: Schema.Types.ObjectId, ref: "User" }],
   comments: [CommentSchema], // Array of comments
+  shares: { type: Number, default: 0 }, // Number of shares
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
@@ -39,36 +42,87 @@ PostSchema.statics.findAll = function () {
 
 // Static method to find a post by ID
 PostSchema.statics.findById = function (postId) {
-  return this.findOne({ _id: postId }).populate("author", "username");
+  return this.findOne({ _id: postId }).populate("author", [
+    "username",
+    "name",
+    "profilePicture",
+  ]);
 };
 
 // Instance method to format post data
-PostSchema.methods.formatPost = function () {
-  return {
+PostSchema.methods.formatPost = async function () {
+  const author = await User.findById(this.author._id).select([
+    "username",
+    "profilePicture",
+    "name",
+  ]);
+  const post = {
     id: this._id,
     content: this.content,
-    author: this.author,
+    author: author,
     likes: this.likes,
-    comments: this.comments.map((comment) => ({
-      id: comment._id,
-      content: comment.content,
-      author: comment.author,
-      likes: comment.likes,
-      replies: comment.replies,
-      createdAt: comment.createdAt,
-    })),
+    shares: this.shares,
+    comments: [],
     createdAt: this.createdAt,
     updatedAt: this.updatedAt,
   };
+
+  for (const comment of this.comments) {
+    const author = await User.findById(comment.author).select([
+      "username",
+      "profilePicture",
+      "name",
+    ]);
+    const formattedComment = {
+      id: comment._id,
+      content: comment.content,
+      author: {
+        id: comment.author,
+        username: author.username,
+        profilePicture: author.profilePicture,
+        name: author.name,
+      },
+      likes: comment.likes,
+      replies: [],
+      createdAt: comment.createdAt,
+    };
+
+    for (const reply of comment.replies) {
+      const replyAuthor = await User.findById(reply.author).select([
+        "username",
+        "name",
+        "profilePicture",
+      ]);
+      const formattedReply = {
+        id: reply._id,
+        content: reply.content,
+        author: {
+          id: reply.author,
+          username: replyAuthor.username,
+          profilePicture: replyAuthor.profilePicture,
+          name: replyAuthor.name,
+        },
+        likes: reply.likes,
+        createdAt: reply.createdAt,
+      };
+      formattedComment.replies.push(formattedReply);
+    }
+
+    post.comments.push(formattedComment);
+  }
+
+  return post;
 };
 
 // Instance method to add a comment to the post
 PostSchema.methods.addComment = async function (commentContent, authorId) {
-  this.comments.push({
+  const comment = {
     content: commentContent,
     author: authorId,
-  });
+  };
+  this.comments.push(comment);
   await this.save();
+  return this.comments[this.comments.length - 1]; // Return the newly added comment
 };
 
 // Instance method to add a reply to a comment
@@ -130,6 +184,20 @@ PostSchema.methods.toggleReplyLike = async function (
   } else {
     // User has already liked the reply, remove like
     reply.likes.splice(index, 1);
+  }
+
+  await this.save();
+};
+
+// Instance method to toggle like/unlike on a post
+PostSchema.methods.togglePostLike = async function (userId) {
+  const index = this.likes.indexOf(userId);
+  if (index === -1) {
+    // User has not liked the post, add like
+    this.likes.push(userId);
+  } else {
+    // User has already liked the post, remove like
+    this.likes.splice(index, 1);
   }
 
   await this.save();
