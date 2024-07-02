@@ -27,6 +27,7 @@ import axiosInstance from "@/lib/axios";
 import { useToast } from "./ui/use-toast";
 // import { useHistory } from "react-router-dom";
 import { ToastAction } from "./ui/toast";
+import { ModeToggle } from "./ModeToggle";
 
 const Sidebar = () => {
   const router = useRouter();
@@ -59,7 +60,7 @@ const Sidebar = () => {
     setLoading(false);
   };
   return (
-    <Card className="fixed flex-col justify-between hidden h-screen px-10 md:flex py-28 min-w-72 max-w-72 drop-shadow-md">
+    <Card className="rounded-none fixed flex-col justify-between hidden h-screen px-10 md:flex py-28 min-w-72 max-w-72 drop-shadow-md">
       <div>
         <h1 className="text-2xl font-bold text-primary mb-7">SyncTalk</h1>
         <div className="flex flex-col gap-6">
@@ -67,7 +68,7 @@ const Sidebar = () => {
             <a
               href={"/"}
               className={`${
-                pathname === "/" && "bg-primary text-white"
+                pathname === "/" && "bg-primary dark:text-black text-white"
               } flex gap-2 p-3 rounded hover:cursor-pointer hover:outline-2 hover:outline outline-gray-300`}
             >
               <Home />
@@ -82,7 +83,7 @@ const Sidebar = () => {
                   className={`flex gap-2 p-3 rounded hover:cursor-pointer hover:outline-2 hover:outline outline-gray-300`}
                 >
                   <Pen />
-                  <span className="">Create Post</span>
+                  <span>Create Post</span>
                 </span>
               </div>
             </DialogTrigger>
@@ -91,7 +92,7 @@ const Sidebar = () => {
                 <DialogTitle className="mb-3 text-2xl">Create Post</DialogTitle>
                 <DialogDescription className="flex flex-col gap-3 my-4">
                   <Textarea
-                    className="text-primary"
+                    className="text-primary h-32"
                     value={postContent}
                     onChange={(e) => setPostContent(e.target.value)}
                     placeholder="Share your thougts..."
@@ -110,7 +111,8 @@ const Sidebar = () => {
             <a
               href={"/profile"}
               className={`${
-                pathname === "/profile" && "bg-primary text-white"
+                pathname === "/profile" &&
+                "bg-primary dark:text-black text-white"
               } flex gap-2 p-3 rounded hover:cursor-pointer hover:outline-2 hover:outline outline-gray-300`}
             >
               <User />
@@ -121,7 +123,8 @@ const Sidebar = () => {
             <a
               href={"/settings"}
               className={`${
-                pathname === "/settings" && "bg-primary text-white"
+                pathname === "/settings" &&
+                "bg-primary dark:text-black text-white"
               } flex gap-2 p-3 rounded hover:cursor-pointer hover:outline-2 hover:outline outline-gray-300`}
             >
               <Settings />
