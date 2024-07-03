@@ -10,6 +10,7 @@ const { getGeoLocation, getSystemInfo, getCurrentTime } = require("./lib/util");
 const connectDatabase = require("./config/mongoDB");
 const path = require("path");
 const fs = require("fs");
+const http = require("http");
 const { Server } = require("socket.io");
 const PORT = process.env.PORT || 5000;
 
@@ -43,7 +44,45 @@ app.use("/api/v1", apiRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-const expressServer = app.listen(PORT, async () => {
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: [
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      "https://synctalk.vercel.app",
+    ], // You can restrict this to your front-end URL
+    methods: ["GET", "POST"],
+  },
+});
+
+io.on("connection", (socket) => {
+  console.log("A user connected");
+
+  // Handle join room
+  socket.on("joinRoom", (roomId) => {
+    socket.join(roomId);
+    console.log(`User joined room: ${roomId}`);
+  });
+
+  // Handle leave room
+  socket.on("leaveRoom", (roomId) => {
+    socket.leave(roomId);
+    console.log(`User left room: ${roomId}`);
+  });
+
+  // Handle send message
+  socket.on("sendMessage", (message) => {
+    io.to(message.chatRoom).emit("newMessage", message);
+  });
+
+  // Handle disconnect
+  socket.on("disconnect", () => {
+    console.log("A user disconnected");
+  });
+});
+
+server.listen(PORT, async () => {
   const getGeo = await getGeoLocation();
   const getSys = await getSystemInfo();
   logger.info(
@@ -55,17 +94,4 @@ const expressServer = app.listen(PORT, async () => {
       getGeo.timezone
     } Org:${getGeo.org}`
   );
-});
-
-const io = new Server(expressServer, {
-  cors: {
-    origin:
-      process.env.NODE_ENV === "production"
-        ? false
-        : [
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-            "https://synctalk.vercel.app",
-          ],
-  },
 });
