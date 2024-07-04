@@ -1,12 +1,8 @@
 "use client";
-import PostCard from "@/components/PostCard";
-import { Card } from "@/components/ui/card";
 import { fetcher } from "@/lib/utils";
-import { Post } from "@/types/Post";
-import { Heart, MessageSquare, Share2 } from "lucide-react";
 import React from "react";
 import useSWR from "swr";
-import { ProfileComponent } from "../page";
+import ProfileComponent from "../ProfileComponent";
 
 const ProfilePageOfUser = ({ params }: { params: { userId: string } }) => {
   const { data, isLoading, error } = useSWR(`/users/${params.userId}`, fetcher); //* Fetches user details by userID
