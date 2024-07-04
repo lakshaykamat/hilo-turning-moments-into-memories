@@ -12,15 +12,14 @@ const TopBar = () => {
   const { user } = useAuth();
 
   return (
-    <div className="md:ml-[18rem] flex justify-between py-5 border bg-card px-7">
-      <div className="flex items-center max-w-60 gap-3">
-        <Search />
-        <Input placeholder="Search..." />
-      </div>
+    <div className="md:ml-[18rem] items-center flex justify-between py-5 border bg-card px-7">
+      <h1 className="text-xl font-bold">SyncTalk</h1>
+
       <div className="flex gap-3 items-center">
         <Link href={`/chats`}>
-          <Button>
+          <Button className="flex gap-1">
             <MessageSquare />
+            <p>Chats</p>
           </Button>
         </Link>
         <ModeToggle />
