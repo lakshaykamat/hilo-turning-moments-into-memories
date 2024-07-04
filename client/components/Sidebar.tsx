@@ -1,13 +1,5 @@
 "use client";
-import {
-  Home,
-  House,
-  Pen,
-  Podcast,
-  Settings,
-  Settings2,
-  User,
-} from "lucide-react";
+import { Home, Pen, Settings, User } from "lucide-react";
 import React, { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Card } from "./ui/card";
@@ -25,12 +17,10 @@ import { Textarea } from "./ui/textarea";
 import { Button } from "./ui/button";
 import axiosInstance from "@/lib/axios";
 import { useToast } from "./ui/use-toast";
-// import { useHistory } from "react-router-dom";
 import { ToastAction } from "./ui/toast";
-import { ModeToggle } from "./ModeToggle";
+import Link from "next/link";
 
 const Sidebar = () => {
-  const router = useRouter();
   const pathname = usePathname();
   const [postContent, setPostContent] = useState("");
   const [isLoading, setLoading] = useState(false);
@@ -47,9 +37,14 @@ const Sidebar = () => {
         toast({
           title: "Post uploaded",
           description: "Check profile",
-          action: <ToastAction altText="View Post">View Post</ToastAction>,
+          action: (
+            <ToastAction altText="View Post">
+              <Link href={`/posts/${response.data.id}`}>View Post</Link>
+            </ToastAction>
+          ),
         });
       }
+      setPostContent("");
     } catch (error: any) {
       toast({
         title: error.response?.data?.message || error.message,
@@ -167,12 +162,14 @@ const BottomBar = () => {
   const router = useRouter();
   const pathname = usePathname();
   return (
-    <div className="fixed bottom-0 flex w-full md:hidden">
+    <div className="fixed bottom-0 border-t-[1px] flex w-full md:hidden">
       <div className="flex items-center justify-center w-full gap-12 bg-card drop-shadow">
         <a
           href="/"
           className={`flex flex-col items-center text-sm justify-center py-4 rounded px-3 sm:px-7 ${
-            pathname === "/" ? "bg-primary text-white" : "hover:bg-secondary"
+            pathname === "/"
+              ? "bg-primary dark:text-black text-white"
+              : "hover:bg-secondary"
           }`}
         >
           <Home />
@@ -210,7 +207,7 @@ const BottomBar = () => {
           href="/profile"
           className={`flex flex-col items-center text-sm justify-center py-4 rounded px-3 sm:px-7 ${
             pathname === "/profile"
-              ? "bg-primary text-white"
+              ? "bg-primary dark:text-black text-white"
               : "hover:bg-secondary"
           }`}
         >
@@ -220,7 +217,7 @@ const BottomBar = () => {
           href="/settings"
           className={`flex flex-col items-center text-sm justify-center py-4 rounded px-3 sm:px-7 ${
             pathname === "/settings"
-              ? "bg-primary text-white"
+              ? "bg-primary dark:text-black text-white"
               : "hover:bg-secondary"
           }`}
         >

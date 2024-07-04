@@ -21,6 +21,33 @@ router.get("/", isAuthenticated, async (req, res, next) => {
     next(error);
   }
 });
+// Search users by username
+router.get("/search", isAuthenticated, async (req, res, next) => {
+  try {
+    const { username } = req.query;
+
+    if (!username) {
+      return res.status(HttpStatusCode.BAD_REQUEST).json({
+        message: "Username query parameter is required",
+      });
+    }
+
+    const users = await User.find({
+      username: { $regex: username, $options: "i" }, // Case-insensitive search
+      _id: { $ne: req.user._id }, // Exclude the authenticated user
+    }).select("username profilePicture name");
+
+    if (users.length === 0) {
+      return res.status(HttpStatusCode.NOT_FOUND).json({
+        message: "No users found",
+      });
+    }
+
+    res.status(HttpStatusCode.OK).json(users);
+  } catch (error) {
+    next(error);
+  }
+});
 
 /**
  * @route GET /api/v1/users/:userId
@@ -30,13 +57,16 @@ router.get("/", isAuthenticated, async (req, res, next) => {
 router.get("/:userId", isAuthenticated, async (req, res, next) => {
   try {
     const { userId } = req.params;
-    const user = await User.findById(userId).populate("posts");
+    const user = await User.findById(userId).populate("posts").sort();
 
     if (!user) {
       return res
         .status(HttpStatusCode.NOT_FOUND)
         .json({ message: "User not found" });
     }
+
+    // Sort the posts by createdAt field in descending order
+    user.posts.sort((a, b) => b.createdAt - a.createdAt);
 
     // Format the posts
     const formattedPosts = await Promise.all(
@@ -63,6 +93,7 @@ router.post("/register", async (req, res, next) => {
   const { name, username, password, email } = req.body;
 
   try {
+    // Validate required fields
     if (!name || !username || !password || !email) {
       throw new CustomError(
         HttpStatusCode.BAD_REQUEST,
@@ -70,6 +101,15 @@ router.post("/register", async (req, res, next) => {
       );
     }
 
+    // Check if username contains spaces or is not lowercase
+    if (username !== username.toLowerCase() || /\s/.test(username)) {
+      throw new CustomError(
+        HttpStatusCode.BAD_REQUEST,
+        "Username must be lowercase and cannot contain spaces"
+      );
+    }
+
+    // Check if username or email already exists
     let existingUser = await User.findOne({ $or: [{ username }, { email }] });
 
     if (existingUser) {
@@ -79,6 +119,7 @@ router.post("/register", async (req, res, next) => {
       );
     }
 
+    // Create new user instance
     const newUser = new User({
       name,
       username,
@@ -87,6 +128,7 @@ router.post("/register", async (req, res, next) => {
       profilePicture: getGravatar(email),
     });
 
+    // Save user to database
     const savedUser = await newUser.save();
 
     // Create JWT payload
@@ -97,30 +139,33 @@ router.post("/register", async (req, res, next) => {
       },
     };
 
-    const response = {
-      _id: savedUser._id,
-      name: savedUser.name,
-      email: savedUser.email,
-      username: savedUser.username,
-      profilePicture: savedUser.profilePicture,
-      status: savedUser.status,
-      role: savedUser.role,
-      friends: savedUser.friends,
-      createdAt: savedUser.createdAt,
-      updatedAt: savedUser.updatedAt,
-    };
-
-    // Sign the token
+    // Generate JWT token
     jwt.sign(
       payload,
       process.env.JWT_SECRET,
       { expiresIn: "30h" }, // Token expires in 30 hours
       (err, token) => {
         if (err) throw err;
-        res.status(HttpStatusCode.OK).json({ ...response, token });
+        // Prepare response object
+        const response = {
+          _id: savedUser._id,
+          name: savedUser.name,
+          email: savedUser.email,
+          username: savedUser.username,
+          profilePicture: savedUser.profilePicture,
+          status: savedUser.status,
+          role: savedUser.role,
+          friends: savedUser.friends,
+          createdAt: savedUser.createdAt,
+          updatedAt: savedUser.updatedAt,
+          token, // Attach token to response
+        };
+        // Respond with user data and token
+        res.status(HttpStatusCode.OK).json(response);
       }
     );
   } catch (error) {
+    // Handle errors
     next(error);
   }
 });

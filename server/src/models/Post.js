@@ -135,11 +135,34 @@ PostSchema.methods.addReply = async function (
   if (!comment) {
     throw new Error("Comment not found");
   }
-  comment.replies.push({
+  const newReply = {
     content: replyContent,
     author: authorId,
-  });
+  };
+  comment.replies.push(newReply);
   await this.save();
+
+  // Populate the newly added reply's author field
+  await this.populate({
+    path: "comments.replies.author",
+    select: "username profilePicture name",
+    match: { _id: authorId },
+  });
+
+  // Retrieve the newly added reply
+  const addedReply = comment.replies[comment.replies.length - 1];
+
+  return {
+    id: addedReply._id,
+    content: addedReply.content,
+    author: {
+      username: addedReply.author.username,
+      profilePicture: addedReply.author.profilePicture,
+      name: addedReply.author.name,
+    },
+    createdAt: addedReply.createdAt,
+    likes: addedReply.likes,
+  };
 };
 
 // Instance method to toggle like/unlike on a comment

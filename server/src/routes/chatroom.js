@@ -28,7 +28,7 @@ const checkUniqueUsers = (userIds) => {
  * @description Create a new chat room
  * @access Private
  */
-router.post("/", async (req, res, next) => {
+router.post("/", isAuthenticated, async (req, res, next) => {
   try {
     let { name, type, users } = req.body;
 
@@ -72,6 +72,18 @@ router.post("/", async (req, res, next) => {
     // Add the current user to the chat room users list
     const chatRoomUsers = [...userIds, req.user.id];
 
+    // Check if a chat room with these users already exists
+    const existingChatRoom = await ChatRoom.findOne({
+      users: { $all: chatRoomUsers, $size: chatRoomUsers.length },
+      type,
+    });
+
+    if (existingChatRoom) {
+      return res.status(HttpStatusCode.BAD_REQUEST).json({
+        message: "Chat room with these users already exists",
+      });
+    }
+
     // Get usernames for naming the private chat room
     const usersExist = await User.find({ _id: { $in: userIds } });
     const chatRoomName =
@@ -91,7 +103,7 @@ router.post("/", async (req, res, next) => {
     const savedChatRoom = await chatRoom.save();
 
     // Respond with the created chat room data
-    res.status(HttpStatusCode.CREATED).json(savedChatRoom);
+    res.status(HttpStatusCode.CREATED).json(savedChatRoom.formatChatRoom());
   } catch (error) {
     // Handle any errors
     next(error);
@@ -108,10 +120,21 @@ router.get("/", async (req, res, next) => {
     // Find chat rooms where the logged-in user is present in the users array
     const chatRooms = await ChatRoom.find({
       users: { $in: [req.user.id] },
-    }).populate("users", "username");
+    }).populate("users", ["username", "profilePicture", "name"]);
 
-    // Respond with the chat rooms
-    res.status(HttpStatusCode.OK).json(chatRooms);
+    // Filter out the current user from the users array in each chat room
+    const filteredChatRooms = chatRooms.map((chatRoom) => {
+      const filteredUsers = chatRoom.users.filter(
+        (user) => user._id.toString() !== req.user.id.toString()
+      );
+      return {
+        ...chatRoom.toObject(),
+        users: filteredUsers,
+      };
+    });
+
+    // Respond with the chat rooms excluding the current user
+    res.status(HttpStatusCode.OK).json(filteredChatRooms);
   } catch (error) {
     // Pass any errors to the error-handling middleware
     next(error);

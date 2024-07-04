@@ -175,10 +175,8 @@ router.post(
       if (!post) {
         throw new CustomError(HttpStatusCode.NOT_FOUND, "Post not found");
       }
-      await post.addReply(commentId, content, req.user._id);
-      res
-        .status(HttpStatusCode.OK)
-        .json({ message: "Reply added successfully" });
+      const resp = await post.addReply(commentId, content, req.user._id);
+      return res.status(HttpStatusCode.OK).json(resp);
     } catch (error) {
       next(error);
     }

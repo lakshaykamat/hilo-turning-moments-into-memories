@@ -4,6 +4,7 @@ const { isAuthenticated } = require("../middleware");
 const Message = require("../models/Message");
 const ChatRoom = require("../models/ChatRoom");
 const { HttpStatusCode, CustomError } = require("../lib/util");
+const User = require("../models/User");
 
 /**
  * @route POST /api/v1/messages
@@ -21,25 +22,47 @@ router.post("/", isAuthenticated, async (req, res, next) => {
     });
 
     if (!chatRoomExists) {
-      throw new CustomError(
-        HttpStatusCode.FORBIDDEN,
-        "You are not authorized to send messages in this chat room"
-      );
+      return res.status(HttpStatusCode.FORBIDDEN).json({
+        message: "You are not authorized to send messages in this chat room",
+      });
     }
 
+    // Fetch the user details
+    const user = await User.findById(req.user.id).select("username");
+    if (!user) {
+      return res
+        .status(HttpStatusCode.NOT_FOUND)
+        .json({ message: "User not found" });
+    }
+
+    // Create a new message
     const message = new Message({
       sender: req.user.id,
       content,
       chatRoom,
     });
+    let savedMessage = await message.save();
 
-    const savedMessage = await message.save();
-    res.status(HttpStatusCode.CREATED).json(savedMessage);
+    // Populate the sender field with username and ID
+    savedMessage = await savedMessage.populate({
+      path: "sender",
+      select: "username",
+    });
+
+    res.status(HttpStatusCode.CREATED).json({
+      _id: savedMessage._id,
+      content: savedMessage.content,
+      chatRoom: savedMessage.chatRoom,
+      sender: {
+        _id: savedMessage.sender._id,
+        username: savedMessage.sender.username,
+      },
+      createdAt: savedMessage.createdAt,
+    });
   } catch (error) {
     next(error);
   }
 });
-
 /**
  * @route GET /api/v1/messages/chatroom/:chatRoomId
  * @description Get all messages for a specific chat room

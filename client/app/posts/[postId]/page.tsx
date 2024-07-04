@@ -3,22 +3,27 @@ import { useAuth } from "@/app/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import axiosInstance from "@/lib/axios";
-import { NextSeo } from "next-seo";
-import { fetcher } from "@/lib/utils";
+import Head from "next/head";
+import { fetcher, formatDate, formatTimestamp } from "@/lib/utils";
 import { Bookmark, Heart, MessageSquare, Share } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import useSWR from "swr";
 import CommentComponent from "./CommentCard";
 import { Card } from "@/components/ui/card";
+import { AvatarImage, Avatar } from "@/components/ui/avatar";
+import Link from "next/link";
 
 const PostPage = ({ params }: { params: { postId: string } }) => {
   const { user } = useAuth();
+  //* Fetch specific post by postId
   const { data, isLoading, error, mutate } = useSWR(
     `/posts/${params.postId}`,
     fetcher
   );
   const [postState, setPostState] = useState({
     commentText: "",
+    postLike: null,
+    postLikeCount: 0,
     comments: [],
   });
 
@@ -26,25 +31,44 @@ const PostPage = ({ params }: { params: { postId: string } }) => {
     if (data && user) {
       setPostState({
         commentText: "",
+        postLike: data.likes.includes(user._id),
+        postLikeCount: data.likes.length,
         comments: data.comments,
       });
     }
   }, [data, user]);
 
   const toggleLike = async () => {
+    const likeState = !postState.postLike;
+    const likeCount = likeState
+      ? postState.postLikeCount + 1
+      : postState.postLikeCount - 1;
+
+    //@ts-ignore
+    setPostState((prev) => ({
+      ...prev,
+      postLike: likeState,
+      postLikeCount: likeCount,
+    }));
+
     try {
-      const response = await axiosInstance.post(`/posts/${params.postId}/like`);
-      if (response.data) {
-        mutate();
-      }
+      await axiosInstance.post(`/posts/${params.postId}/like`);
+      mutate(); // Revalidate SWR cache
     } catch (error) {
       console.error("Error liking post:", error);
+      // Revert state if API call fails
+      //@ts-ignore
+      setPostState((prev) => ({
+        ...prev,
+        postLike: !likeState,
+        postLikeCount: prev.postLikeCount - 1,
+      }));
     }
   };
 
   const sharePost = async (postID: string) => {
     try {
-      // http://localhost:5000/api/v1/posts/:postId/share
+      //* Share the post and opens the share menu of the device
       const response = await axiosInstance.post(
         `/posts/${postID}/share`,
         fetcher
@@ -54,11 +78,11 @@ const PostPage = ({ params }: { params: { postId: string } }) => {
         if (navigator.share) {
           await navigator.share({
             title: data.content,
-            url: `http://localhost:3000/posts/${params.postId}`,
+            url: `https://synctalk.vercel.app/posts/${params.postId}`,
           });
           console.log("Shared successfully");
         } else {
-          console.log("Web Share API not supported");
+          alert("Web Share API not supported");
         }
       }
     } catch (error) {
@@ -69,6 +93,7 @@ const PostPage = ({ params }: { params: { postId: string } }) => {
   const addComment = async (postId: string, content: string) => {
     if (!postState.commentText) return;
     try {
+      //* Add comment to the post takes comment content
       const response = await axiosInstance.post(`/posts/${postId}/comments`, {
         content,
       });
@@ -94,56 +119,69 @@ const PostPage = ({ params }: { params: { postId: string } }) => {
 
     return (
       <>
-        <div className="max-w-xl mx-auto p-4">
-          <Card className="p-5 mb-7">
+        <div className="w-full sm:max-w-3xl mx-auto">
+          <Card className="p-4 mb-7">
             <div className="flex gap-3 items-start mb-4">
-              <a href={`/profile/${data.author._id}`}>
-                <img
-                  className="w-14 h-14 rounded-full"
-                  src={data.author.profilePicture}
-                  alt={`${data.author.username}'s profile`}
-                />
-              </a>
-              <div className="flex flex-col">
-                <h1 className="text-xl font-semibold">{data.author.name}</h1>
+              <Link href={`/profile/${data.author._id}`}>
+                <Avatar className="w-14 h-14">
+                  <AvatarImage
+                    src={data.author.profilePicture}
+                    alt={`${data.author.username}'s profile`}
+                  />
+                </Avatar>
+              </Link>
+              <div className="flex flex-col w-full">
+                <h1 className="text-lg sm:text-xl font-semibold">
+                  {data.author.name}
+                </h1>
                 <h2 className="text-sm text-muted-foreground">
                   {data.author.username}
                 </h2>
+
                 <p
                   dangerouslySetInnerHTML={{
                     __html: data.content.replace(/\n/g, "<br>"),
                   }}
                   className="mt-2 text-base"
                 />
+                <p className="text-muted-foreground mt-2 text-sm text-end w-full">
+                  {formatDate(data.createdAt)}
+                </p>
               </div>
             </div>
             <Separator className="my-3" />
             <div className="flex justify-between my-5">
-              <div className="flex gap-6">
+              <div className="flex gap-2 sm:gap-5 flex-wrap">
                 <ActionIcon
                   icon={
                     <Heart
                       className={
-                        data.likes.includes(user._id)
-                          ? "text-red-500 fill-red-500"
+                        postState.postLike
+                          ? "text-red-500 w-5 h-5 fill-red-500"
                           : ""
                       }
                     />
                   }
-                  count={data.likes.length}
+                  count={postState.postLikeCount}
                   onClick={toggleLike}
                 />
                 <ActionIcon
-                  icon={<MessageSquare />}
+                  icon={<MessageSquare className="w-5 h-5" />}
                   count={postState.comments.length}
                 />
                 <ActionIcon
-                  icon={<Share />}
+                  icon={<Share className="w-5 h-5" />}
                   count={data.shares}
                   onClick={() => sharePost(data.id)}
                 />
               </div>
-              <Bookmark className="cursor-pointer" />
+              <div>
+                <ActionIcon
+                  icon={<Bookmark className="w-5 h-5" />}
+                  count={0}
+                  onClick={() => {}}
+                />
+              </div>
             </div>
             <div className="flex items-center gap-4">
               <input
@@ -167,7 +205,9 @@ const PostPage = ({ params }: { params: { postId: string } }) => {
           <div>
             {postState.comments.map((comment: any) => (
               <CommentComponent
-                key={comment._id}
+                postID={data.id}
+                key={comment.id}
+                commentID={comment.id}
                 content={comment.content}
                 author={comment.author}
                 replies={comment.replies}
@@ -178,7 +218,7 @@ const PostPage = ({ params }: { params: { postId: string } }) => {
       </>
     );
   }
-
+  //TODO Create Functionality to reply to the comment
   return null;
 };
 

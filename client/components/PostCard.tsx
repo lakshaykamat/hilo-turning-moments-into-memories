@@ -1,5 +1,8 @@
 import { Heart, MessageSquare, Share2 } from "lucide-react";
 import { Card } from "./ui/card";
+import { Avatar, AvatarImage } from "./ui/avatar";
+import { formatTimestamp } from "@/lib/utils";
+import Link from "next/link";
 
 type PostProps = {
   postId: string;
@@ -12,6 +15,7 @@ type PostProps = {
     name: string;
     username: string;
   };
+  createdAt: string;
 };
 
 export const PostCard = ({
@@ -21,6 +25,7 @@ export const PostCard = ({
   commentsCount,
   shareCount,
   content,
+  createdAt,
 }: PostProps) => {
   const truncateText = (str: string, num: number) => {
     return str.length > num ? str.slice(0, num) + "..." : str;
@@ -30,20 +35,26 @@ export const PostCard = ({
   const htmlText = text.replace(/\n/g, "<br>");
 
   return (
-    <a href={`/posts/${postId}`}>
+    <Link href={`/posts/${postId}`}>
       <Card className="flex flex-col justify-center gap-6 p-5">
         <div className="flex items-start gap-3">
-          <img
-            className="w-10 rounded-full"
-            src={author.profilePicture}
-            alt=""
-          />
-          <div>
-            <h3 className="text-lg font-semibold hover:underline">
-              {author.username}
-            </h3>
+          <Avatar>
+            <AvatarImage
+              src={author.profilePicture}
+              alt={`${author.name}'s profile picture`}
+            ></AvatarImage>
+          </Avatar>
+          <div className="w-full">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold hover:underline">
+                {author.username}
+              </h3>
+              <p className="text-muted-foreground text-sm">
+                {formatTimestamp(createdAt)}
+              </p>
+            </div>
             <p
-              className="break-words text-base text-balance break-word"
+              className="break-words my-2 text-base text-balance break-word"
               style={{ wordBreak: "break-word" }}
               dangerouslySetInnerHTML={{ __html: htmlText }}
             />
@@ -60,7 +71,7 @@ export const PostCard = ({
           />
         </div>
       </Card>
-    </a>
+    </Link>
   );
 };
 type ActionIconProps = {

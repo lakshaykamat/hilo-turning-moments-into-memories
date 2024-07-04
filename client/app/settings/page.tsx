@@ -2,12 +2,10 @@
 import { Button } from "@/components/ui/button";
 import { useAuth } from "../context/AuthContext";
 import React, { useState } from "react";
-import axiosInstance from "@/lib/axios";
 import { useRouter } from "next/navigation";
-import { LocalStorageHandler } from "@/lib/utils";
 
 const SettingsPage = () => {
-  const { logout, setUser, user, setNewProfilePhoto } = useAuth();
+  const { logout, setNewProfilePhoto } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -19,15 +17,7 @@ const SettingsPage = () => {
     setLoading(true);
     try {
       await setNewProfilePhoto(url);
-      // if (response.data) {
-      //   LocalStorageHandler.addUserToken({ ...user, profilePicture: url });
-      //   //@ts-ignore
-      //   // setUser((prev) => ({
-      //   //   ...prev,
-      //   //   profilePicture: url,
-      //   // }));
-      //   router.push("/profile");
-      // }
+      //TODO Show Toast Profile picture added
     } catch (err) {
       setError("Failed to update profile picture. Please try again.");
     } finally {
@@ -48,7 +38,7 @@ const SettingsPage = () => {
 
   return (
     <>
-      <h1 className="text-4xl font-bold mb-7">Settings</h1>
+      <h1 className="text-2xl sm:text-4xl font-bold mb-7">Settings</h1>
       <div className="flex justify-between items-center mb-4">
         <p>Change profile picture</p>
         <Button onClick={changeProfilePicture} disabled={loading}>

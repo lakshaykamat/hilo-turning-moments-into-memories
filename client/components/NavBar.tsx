@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import { Button } from "./ui/button";
+import { ModeToggle } from "./ModeToggle";
 
 const NavBar = () => {
   return (
@@ -29,7 +30,7 @@ const NavBar = () => {
         </a>
       </div>
       <div>
-        <Button>Login</Button>
+        <ModeToggle />
       </div>
     </nav>
   );
