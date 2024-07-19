@@ -6,7 +6,7 @@ export const LOCAL_URL = "http://127.0.0.1:5000/api/v1";
 export const REMOTE_SERVER_URL = "https://synctalk.onrender.com/api/v1";
 const axiosInstance = axios.create({
   baseURL: REMOTE_SERVER_URL, // TODO Replace with your API base URL
-  timeout: 60000, // Timeout after 60 seconds
+  timeout: 600000, // Timeout after 60 seconds
   headers: {
     "Content-Type": "application/json",
     // Add any other headers you need
