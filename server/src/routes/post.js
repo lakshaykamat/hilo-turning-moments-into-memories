@@ -4,6 +4,11 @@ const Post = require("../models/Post");
 const { HttpStatusCode, CustomError } = require("../lib/util");
 const { isAuthenticated } = require("../middleware");
 const User = require("../models/User");
+const { upload } = require("../config/multer");
+const sharp = require("sharp");
+const fs = require("fs");
+const ffprobeStatic = require("ffprobe-static");
+const ffprobe = require("ffprobe");
 
 /**
  * @route POST /api/v1/post
@@ -13,24 +18,79 @@ const User = require("../models/User");
  * @returns {object} - 201 Created post object.
  * @throws {CustomError} - If there are validation errors or database issues.
  */
-router.post("/", isAuthenticated, async (req, res, next) => {
-  const { content } = req.body;
-  try {
-    const post = new Post({
-      content,
-      author: req.user.id,
-    });
-    await post.save();
 
-    const user = await User.findById(req.user.id);
-    user.posts.push(post._id);
-    await user.save();
+router.post(
+  "/",
+  isAuthenticated,
+  upload.single("file"), // Use a generic field name like 'file'
+  async (req, res, next) => {
+    const { content } = req.body;
+    const filePath = req.file ? req.file.path : null; // Get the file path if uploaded
+    let fileType = null;
+    let metadata = {};
 
-    res.status(HttpStatusCode.CREATED).json(await post.formatPost());
-  } catch (error) {
-    next(error);
+    try {
+      // Determine the file type if a file is uploaded
+      if (req.file) {
+        fileType = req.file.mimetype.startsWith("image/") ? "image" : "video";
+
+        if (fileType === "image") {
+          // Get metadata for images
+          const imageMetadata = await sharp(filePath).metadata();
+          metadata = {
+            width: imageMetadata.width,
+            height: imageMetadata.height,
+            orientation: imageMetadata.orientation,
+          };
+        } else if (fileType === "video") {
+          // Get metadata for videos using async/await
+          metadata = await new Promise((resolve, reject) => {
+            ffprobe(filePath, { path: ffprobeStatic.path }, (err, info) => {
+              if (err) {
+                return reject(err);
+              }
+              const stream = info.streams[0];
+              resolve({
+                width: stream.width,
+                height: stream.height,
+                duration: stream.duration,
+                aspectRatio: stream.display_aspect_ratio,
+              });
+            });
+          });
+        }
+      }
+      // Ensure at least content or file is provided
+      if (!content && !filePath) {
+        throw new CustomError(
+          HttpStatusCode.BAD_REQUEST,
+          "Content or a file (image/video) is required"
+        );
+      }
+
+      const post = new Post({
+        content,
+        file: filePath, // Store the file path
+        fileType, // Store the file type (if any)
+        metadata, // Store the metadata (if any)
+        author: req.user.id,
+      });
+      await post.save();
+
+      const user = await User.findById(req.user.id);
+      user.posts.push(post._id);
+      await user.save();
+
+      res.status(HttpStatusCode.CREATED).json(await post.formatPost());
+    } catch (error) {
+      // Remove the uploaded file if an error occurs
+      if (filePath) {
+        fs.unlinkSync(filePath);
+      }
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @route GET /api/v1/post

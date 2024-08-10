@@ -20,13 +20,25 @@ const CommentSchema = new Schema({
 
 // Define Post schema
 const PostSchema = new Schema({
-  content: { type: String, required: true, maxlength: 500 },
+  content: { type: String, maxlength: 500 },
+  file: { type: String }, // Optional if it's a text post
+  fileType: { type: String }, // 'image' or 'video'
+  metadata: { type: Object },
   author: { type: Schema.Types.ObjectId, ref: "User", required: true },
   likes: [{ type: Schema.Types.ObjectId, ref: "User" }],
   comments: [CommentSchema], // Array of comments
   shares: { type: Number, default: 0 }, // Number of shares
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
+});
+
+// Middleware to ensure either content or file is provided
+PostSchema.pre("validate", function (next) {
+  if (!this.content && !this.file) {
+    next(new Error("Either content or image/video must be provided"));
+  } else {
+    next();
+  }
 });
 
 // Middleware to update timestamps
@@ -59,6 +71,9 @@ PostSchema.methods.formatPost = async function () {
   const post = {
     id: this._id,
     content: this.content,
+    file: this.file,
+    fileType: this.fileType,
+    metadata: this.metadata,
     author: author,
     likes: this.likes,
     shares: this.shares,

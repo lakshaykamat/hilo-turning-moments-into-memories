@@ -4,7 +4,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { HttpStatusCode, CustomError, getGravatar } = require("../lib/util");
 const { isAuthenticated } = require("../middleware");
-const Post = require("../models/Post");
+const { upload } = require("../config/multer");
 
 const router = express.Router();
 
@@ -232,16 +232,24 @@ router.post("/login", async (req, res, next) => {
 router.put(
   "/change-profile-picture",
   isAuthenticated,
+  upload.single("image"),
   async (req, res, next) => {
-    const { image } = req.body;
-
     try {
       const user = await User.findById(req.user._id);
       if (!user) {
         throw new CustomError(HttpStatusCode.NOT_FOUND, "User not found");
       }
 
-      user.profilePicture = image;
+      if (!req.file) {
+        throw new CustomError(
+          HttpStatusCode.BAD_REQUEST,
+          "No image file provided"
+        );
+      }
+
+      // Optionally, you can add logic to delete the old profile picture if stored on the server
+
+      user.profilePicture = req.file.path; // Save the file path to the user profile
       await user.save();
 
       res.status(HttpStatusCode.OK).json({
