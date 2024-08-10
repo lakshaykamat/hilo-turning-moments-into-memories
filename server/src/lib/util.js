@@ -1,6 +1,9 @@
 const axios = require("axios");
 const os = require("os");
 const gravatarUrl = require("gravatar-url");
+const ffprobeStatic = require("ffprobe-static");
+const ffprobe = require("ffprobe");
+const sharp = require("sharp");
 
 const getGravatar = (email) => {
   // Generate Gravatar URL
@@ -71,8 +74,52 @@ function getCurrentTime() {
     now.getMonth() + 1
   }-${now.getFullYear()} ${hours}:${minutes}:${seconds}`;
 }
+
+const getImageMetadata = async (filePath) => {
+  try {
+    const imageMetadata = await sharp(filePath).metadata();
+    return {
+      width: imageMetadata.width,
+      height: imageMetadata.height,
+      format: imageMetadata.format,
+    };
+  } catch (error) {
+    throw new CustomError(
+      HttpStatusCode.INTERNAL_SERVER_ERROR,
+      "Error extracting image metadata"
+    );
+  }
+};
+
+const getVideoMetadata = async (filePath) => {
+  try {
+    const info = await new Promise((resolve, reject) => {
+      ffprobe(filePath, { path: ffprobeStatic.path }, (err, info) => {
+        if (err) {
+          return reject(err);
+        }
+        resolve(info);
+      });
+    });
+
+    const stream = info.streams[0];
+    return {
+      width: stream.width,
+      height: stream.height,
+      duration: stream.duration,
+      aspectRatio: stream.display_aspect_ratio,
+    };
+  } catch (error) {
+    throw new CustomError(
+      HttpStatusCode.INTERNAL_SERVER_ERROR,
+      "Error extracting video metadata"
+    );
+  }
+};
 module.exports = {
   HttpStatusCode,
+  getImageMetadata,
+  getVideoMetadata,
   CustomError,
   getGeoLocation,
   getSystemInfo,
