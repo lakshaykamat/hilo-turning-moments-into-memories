@@ -3,6 +3,8 @@ const User = require("../models/User");
 const Post = require("../models/Post");
 const { HttpStatusCode, CustomError, getGravatar } = require("../lib/util");
 const bcrypt = require("bcryptjs");
+const Followers = require("../models/Follower");
+const Following = require("../models/Following");
 
 const registerUser = async (req, res, next) => {
   const { name, username, password, email } = req.body;
@@ -45,6 +47,12 @@ const registerUser = async (req, res, next) => {
 
     // Save user to database
     const savedUser = await newUser.save();
+
+    // Create corresponding Followers and Following documents
+    const followers = new Followers({ userId: savedUser._id });
+    const following = new Following({ userId: savedUser._id });
+
+    await Promise.all([followers.save(), following.save()]);
 
     // Remove password field from user object before sending response
     const { password: _, __v, ...response } = savedUser.toObject();
@@ -114,7 +122,7 @@ const updateUser = async (req, res, next) => {
     }
 
     // Update other fields if provided
-    const { name, username, email, password } = req.body;
+    const { name, username, email } = req.body;
     if (name) user.name = name;
     if (username) user.username = username;
     if (email) user.email = email;
@@ -124,11 +132,7 @@ const updateUser = async (req, res, next) => {
 
     // Remove password and __v before sending response
     const { password: _, __v, ...response } = user.toObject();
-
-    res.status(HttpStatusCode.OK).json({
-      message: "User updated successfully",
-      ...response,
-    });
+    res.status(HttpStatusCode.OK).json(response);
   } catch (error) {
     next(error);
   }
@@ -149,8 +153,12 @@ const findUsers = async (req, res, next) => {
           .json({ message: "User not found" });
       }
 
+      const followerList = await Followers.findOne({ userId: userId });
+      const followingList = await Following.findOne({ userId: userId });
       res.status(HttpStatusCode.OK).json({
         ...user.toObject(),
+        following: followingList ? followingList.following : [],
+        followers: followerList ? followerList.followers : [],
         posts: await user.getPosts(),
       });
     } else if (username) {
@@ -179,6 +187,65 @@ const findUsers = async (req, res, next) => {
   }
 };
 
+const followUser = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+
+    // Prevent user from following themselves
+    if (req.user._id.toString() === userId) {
+      return res.status(HttpStatusCode.BAD_REQUEST).json({
+        error: true,
+        message: "You cannot follow yourself.",
+      });
+    }
+
+    // Find the user to be followed
+    const userToFollow = await User.findById(userId);
+    if (!userToFollow) {
+      throw new CustomError(HttpStatusCode.NOT_FOUND, "User not found");
+    }
+
+    // Find or create the follower list for the user being followed
+    let followerList = await Followers.findOne({ userId: userId });
+    if (!followerList) {
+      followerList = new Followers({ userId: userId, followers: [] });
+    }
+
+    // Find or create the following list for the current user
+    let followingList = await Following.findOne({ userId: req.user._id });
+    if (!followingList) {
+      followingList = new Following({ userId: req.user._id, following: [] });
+    }
+
+    const isFollowing = followingList.following.includes(userId);
+
+    if (isFollowing) {
+      // If already following, unfollow the user
+      followingList.following = followingList.following.filter(
+        (id) => id.toString() !== userId
+      );
+      followerList.followers = followerList.followers.filter(
+        (id) => id.toString() !== req.user._id.toString()
+      );
+    } else {
+      // Otherwise, follow the user
+      followingList.following.push(userId);
+      followerList.followers.push(req.user._id);
+    }
+
+    // Save the updated lists
+    await Promise.all([followingList.save(), followerList.save()]);
+
+    res.status(HttpStatusCode.OK).json({
+      message: isFollowing
+        ? "User unfollowed successfully"
+        : "User followed successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const userController = {
   auth: {
     register: registerUser,
@@ -186,5 +253,6 @@ const userController = {
   },
   update: updateUser,
   find: findUsers,
+  follow: followUser,
 };
 module.exports = userController;

@@ -8,6 +8,7 @@ const {
 const Like = require("../models/Like");
 const Comment = require("../models/Comment");
 const Reply = require("../models/Reply");
+const Share = require("../models/Share");
 const fs = require("fs").promises;
 
 const createPost = async (req, res, next) => {
@@ -68,10 +69,12 @@ const getPosts = async (req, res, next) => {
 
     if (postId) {
       // Fetch the post and its author (excluding password)
-      const post = await Post.findById(postId).populate({
-        path: "author",
-        select: "-password -__v", // Exclude password field
-      });
+      const post = await Post.findById(postId)
+        .populate({
+          path: "author",
+          select: "-password -__v", // Exclude password field
+        })
+        .select("-__v");
 
       if (!post) {
         throw new CustomError(HttpStatusCode.NOT_FOUND, "Post not found");
@@ -91,6 +94,9 @@ const getPosts = async (req, res, next) => {
         targetType: "Post",
       });
       const postLikesUserIds = postLikes.map((like) => like.userId);
+
+      const postShares = await Share.find({ postId });
+      const postSharesUserIds = postShares.map((share) => share.userId);
 
       // Fetch replies for each comment
       const commentsWithReplies = await Promise.all(
@@ -118,6 +124,7 @@ const getPosts = async (req, res, next) => {
       const detailedPost = {
         ...post.toObject(),
         comments: commentsWithReplies,
+        shares: postSharesUserIds,
         likes: postLikesUserIds, // List of user IDs who liked the post
       };
 
@@ -125,10 +132,13 @@ const getPosts = async (req, res, next) => {
     }
 
     // Fetch all posts with author details and sort by creation date
-    const posts = await Post.find().sort({ createdAt: -1 }).populate({
-      path: "author",
-      select: "-password -__v", // Exclude password field
-    });
+    const posts = await Post.find()
+      .sort({ createdAt: -1 })
+      .populate({
+        path: "author",
+        select: "-password -__v", // Exclude password field
+      })
+      .select("-__v");
 
     // Optionally, include likes count or user IDs for each post
     const postsWithLikes = await Promise.all(
@@ -137,9 +147,19 @@ const getPosts = async (req, res, next) => {
           targetId: post._id,
           targetType: "Post",
         });
+        const comments = await Comment.find({
+          postId: post._id,
+        });
+        const shares = await Comment.find({
+          postId: post._id,
+        });
+        const commentsUserIds = comments.map((comment) => comment.author._id);
+        const sharesUserIds = shares.map((share) => share.userId);
         const likesUserIds = likes.map((like) => like.userId);
         return {
           ...post.toObject(),
+          comments: commentsUserIds,
+          shares: sharesUserIds,
           likes: likesUserIds, // List of user IDs who liked the post
         };
       })
@@ -170,11 +190,9 @@ const sharePost = async (req, res, next) => {
     if (!post) {
       throw new CustomError(HttpStatusCode.NOT_FOUND, "Post not found");
     }
-    post.shareCount += 1;
-    await post.save();
-    res
-      .status(HttpStatusCode.OK)
-      .json({ message: `Shared: ${post.shareCount}` });
+    const share = new Share({ postId, userId: req.user._id });
+    await share.save();
+    res.status(HttpStatusCode.OK).json(share);
   } catch (error) {
     next(error);
   }

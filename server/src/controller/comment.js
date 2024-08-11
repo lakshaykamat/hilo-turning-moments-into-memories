@@ -1,6 +1,8 @@
 const { CustomError, HttpStatusCode } = require("../lib/util");
 const Comment = require("../models/Comment");
 const Post = require("../models/Post");
+const Like = require("../models/Like");
+const Reply = require("../models/Reply");
 
 const addComment = async (req, res, next) => {
   try {
@@ -12,13 +14,37 @@ const addComment = async (req, res, next) => {
       throw new CustomError(HttpStatusCode.NOT_FOUND, "Post not found");
     }
 
+    // Add the comment to the post
     const addedComment = await post.addComment(content, req.user._id);
 
-    res.status(HttpStatusCode.OK).json(addedComment);
+    // Fetch the comment and populate the author
+    const populatedComment = await Comment.findById(addedComment._id).select(
+      "-__v"
+    );
+
+    // Fetch likes and replies separately
+    const likes = await Like.find({
+      targetId: populatedComment._id,
+      targetType: "Comment",
+    });
+
+    const replies = await Reply.find({
+      commentId: populatedComment._id,
+    });
+
+    // Attach likes and replies to the comment object
+    const commentWithLikesAndReplies = {
+      ...populatedComment.toObject(),
+      likes,
+      replies,
+    };
+
+    res.status(HttpStatusCode.OK).json(commentWithLikesAndReplies);
   } catch (error) {
     next(error);
   }
 };
+
 const replyToComment = async (req, res, next) => {
   try {
     const { commentId } = req.params;

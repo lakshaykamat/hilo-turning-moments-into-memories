@@ -9,7 +9,8 @@ router.get("/", isAuthenticated, userController.find);
 
 router
   .post("/register", userController.auth.register)
-  .post("/login", userController.auth.login);
+  .post("/login", userController.auth.login)
+  .post("/follow/:userId", isAuthenticated, userController.follow);
 
 router.put(
   "/update",

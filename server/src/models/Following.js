@@ -7,7 +7,7 @@ const FollowingSchema = new Schema({
 });
 
 // Index on userId for efficient querying
-//FollowingSchema.index({ userId: 1 });
+FollowingSchema.index({ userId: 1 });
 
 // Method to add a following
 FollowingSchema.methods.addFollowing = async function (followingId) {

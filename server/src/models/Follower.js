@@ -7,7 +7,7 @@ const FollowersSchema = new Schema({
 });
 
 // Index on userId for efficient querying
-//FollowersSchema.index({ userId: 1 });
+FollowersSchema.index({ userId: 1 });
 
 // Method to add a follower
 FollowersSchema.methods.addFollower = async function (followerId) {

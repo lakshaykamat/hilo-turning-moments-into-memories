@@ -9,7 +9,6 @@ const PostSchema = new Schema({
   media: { type: Object },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
-  shareCount: { type: Number, default: 0 },
 });
 
 // Middleware to ensure either content or file is provided
@@ -34,9 +33,6 @@ PostSchema.methods.addComment = async function (commentContent, authorId) {
     author: authorId,
     postId: this._id,
   });
-
-  // Increment the comment count
-  this.commentCount += 1;
   await this.save();
 
   return comment;

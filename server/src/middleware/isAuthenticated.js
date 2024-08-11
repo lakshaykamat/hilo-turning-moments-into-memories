@@ -1,32 +1,48 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
-const { CustomError } = require("../lib/util");
+const { CustomError, HttpStatusCode } = require("../lib/util");
 
 const isAuthenticated = async (req, res, next) => {
-  let token;
+  const authHeader = req.headers.authorization;
 
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith("Bearer")
-  ) {
-    try {
-      // Get token from header
-      token = req.headers.authorization.split(" ")[1];
-
-      // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-      // Get user from the token
-      req.user = await User.findById(decoded.user.id).select("-password");
-
-      next();
-    } catch (error) {
-      next(new CustomError(401, "Not authorized, token failed"));
-    }
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return next(
+      new CustomError(
+        HttpStatusCode.UNAUTHORIZED,
+        "Not authorized, no token provided"
+      )
+    );
   }
 
-  if (!token) {
-    next(new CustomError(401, "Not authorized, no token"));
+  const token = authHeader.split(" ")[1];
+
+  try {
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Get user from the token
+    const user = await User.findById(decoded.user.id).select("-password");
+
+    if (!user) {
+      return next(
+        new CustomError(
+          HttpStatusCode.UNAUTHORIZED,
+          "Not authorized, user not found"
+        )
+      );
+    }
+
+    // Attach user to request object
+    req.user = user;
+    next();
+  } catch (error) {
+    console.error("Authentication error:", error);
+    next(
+      new CustomError(
+        HttpStatusCode.UNAUTHORIZED,
+        "Not authorized, token invalid or expired"
+      )
+    );
   }
 };
 

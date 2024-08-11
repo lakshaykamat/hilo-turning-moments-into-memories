@@ -1,6 +1,9 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 const Post = require("./Post");
+const Share = require("./Share");
+const Like = require("./Like");
+const Comment = require("./Comment");
 const bcrypt = require("bcryptjs");
 
 const UserSchema = new Schema({
@@ -12,7 +15,7 @@ const UserSchema = new Schema({
     minlength: 3,
     maxlength: 20,
   },
-  password: { type: String, required: true, minlength: 6, maxlength: 20 },
+  password: { type: String, required: true, minlength: 6 },
   email: {
     type: String,
     required: true,
@@ -57,9 +60,40 @@ UserSchema.statics.findByStatus = function (status) {
 };
 
 UserSchema.methods.getPosts = async function () {
-  const posts = await Post.find({ author: this._id }).sort({
-    createdAt: -1,
-  });
-  return posts;
+  // Fetch posts by the user and sort by creation date in descending order
+  const posts = await Post.find({ author: this._id })
+    .sort({
+      createdAt: -1,
+    })
+    .populate("author");
+
+  // Iterate through each post to fetch likes and shares
+  const postsWithLikesAndShares = await Promise.all(
+    posts.map(async (post) => {
+      // Fetch likes for the current post
+      const postLikes = await Like.find({
+        targetId: post._id,
+        targetType: "Post",
+      });
+      const postLikesUserIds = postLikes.map((like) => like.userId);
+
+      // Fetch shares for the current post
+      const postShares = await Share.find({ postId: post._id });
+      const postSharesUserIds = postShares.map((share) => share.userId);
+
+      const postComments = await Comment.find({ postId: post._id });
+      const postCommentUserIds = postComments.map((comment) => comment.author);
+      // Attach likes and shares information to the post object
+      return {
+        ...post.toObject(),
+        likes: postLikesUserIds,
+        shares: postSharesUserIds,
+        comments: postCommentUserIds,
+      };
+    })
+  );
+
+  return postsWithLikesAndShares;
 };
+
 module.exports = mongoose.model("User", UserSchema);
