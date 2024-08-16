@@ -35,20 +35,24 @@ PostSchema.methods.format = async function () {
   const likes = await Like.find({
     targetId: post._id,
     targetType: "Post",
-  });
+  })
+    .populate("userId", "-password -__v")
+    .select("-__v");
   const comments = await Comment.find({
     postId: post._id,
-  }).populate("author");
+  })
+    .populate("author", "-password -__v")
+    .select("-__v");
   const shares = await Comment.find({
     postId: post._id,
-  });
+  }).select("-__v");
   const commentsUserIds = comments.map((comment) => comment.author._id);
   const sharesUserIds = shares.map((share) => share.userId);
-  const likesUserIds = likes.map((like) => like.userId);
+  const likesUser = likes.map((like) => like.userId);
 
   return {
     ...post._doc,
-    likes: likesUserIds,
+    likes: likesUser,
     shares: sharesUserIds,
     comments: comments,
   };

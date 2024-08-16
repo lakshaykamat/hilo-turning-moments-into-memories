@@ -81,34 +81,7 @@ UserSchema.methods.getPosts = async function () {
     })
     .populate("author", "-password -__v")
     .select("-__v");
-
-  // Iterate through each post to fetch likes and shares
-  const postsWithLikesAndShares = await Promise.all(
-    posts.map(async (post) => {
-      // Fetch likes for the current post
-      const postLikes = await Like.find({
-        targetId: post._id,
-        targetType: "Post",
-      });
-      const postLikesUserIds = postLikes.map((like) => like.userId);
-
-      // Fetch shares for the current post
-      const postShares = await Share.find({ postId: post._id });
-      const postSharesUserIds = postShares.map((share) => share.userId);
-
-      const postComments = await Comment.find({ postId: post._id });
-      const postCommentUserIds = postComments.map((comment) => comment.author);
-      // Attach likes and shares information to the post object
-      return {
-        ...post.toObject(),
-        likes: postLikesUserIds,
-        shares: postSharesUserIds,
-        comments: postCommentUserIds,
-      };
-    })
-  );
-
-  return postsWithLikesAndShares;
+  return await Promise.all(posts.map(async (post) => await post.format()));
 };
 
 module.exports = mongoose.model("User", UserSchema);

@@ -118,18 +118,15 @@ const updateUser = async (req, res, next) => {
     if (!user) {
       throw new CustomError(HttpStatusCode.NOT_FOUND, "User not found");
     }
-
     // Handle profile picture update
     if (req.file) {
       user.profilePicture = req.file.path; // Save the file path to the user profile
     }
-
     // Update other fields if provided
     const { name, username, email } = req.body;
     if (name) user.name = name;
     if (username) user.username = username;
     if (email) user.email = email;
-    if (password) user.password = await bcrypt.hash(password, 10);
 
     await user.save();
 

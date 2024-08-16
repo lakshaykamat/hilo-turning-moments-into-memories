@@ -140,7 +140,6 @@ const getPosts = async (req, res, next) => {
     const postWithLikesSharesAndComments = await Promise.all(
       posts.map(async (post) => await post.format())
     );
-    console.log(postWithLikesSharesAndComments);
 
     res.status(HttpStatusCode.OK).json(postWithLikesSharesAndComments);
   } catch (error) {
