@@ -5,6 +5,9 @@ const Share = require("./Share");
 const Like = require("./Like");
 const Comment = require("./Comment");
 const bcrypt = require("bcryptjs");
+const Followers = require("./Follower");
+const Following = require("./Following");
+const { CustomError } = require("../lib/util");
 
 const UserSchema = new Schema({
   name: { type: String, required: true, maxlength: 50 },
@@ -49,14 +52,25 @@ UserSchema.methods.comparePassword = async function (password) {
   return bcrypt.compare(password, this.password);
 };
 
-// Static method to find user by email
-UserSchema.statics.findByEmail = function (email) {
-  return this.findOne({ email });
-};
+UserSchema.methods.format = async function () {
+  // Fetch the following list and populate the 'following' field
+  const followingList = await Following.findOne({
+    userId: this._id,
+  }).populate("following", "-password -__v");
 
-// Static method to get users by status
-UserSchema.statics.findByStatus = function (status) {
-  return this.find({ status });
+  // Fetch the follower list and populate the 'followers' field
+  const followerList = await Followers.findOne({ userId: this._id }).populate(
+    "followers",
+    "-password -__v"
+  );
+
+  // Return formatted user data
+  return {
+    ...this._doc,
+    following: followingList?.following || [],
+    followers: followerList?.followers || [],
+    posts: await this.getPosts(),
+  };
 };
 
 UserSchema.methods.getPosts = async function () {
@@ -65,7 +79,8 @@ UserSchema.methods.getPosts = async function () {
     .sort({
       createdAt: -1,
     })
-    .populate("author");
+    .populate("author", "-password -__v")
+    .select("-__v");
 
   // Iterate through each post to fetch likes and shares
   const postsWithLikesAndShares = await Promise.all(

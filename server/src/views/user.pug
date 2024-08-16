@@ -1,0 +1,62 @@
+doctype html
+html
+  head
+    title= user.username
+  body
+    header
+      h1= user.username
+      p Details of the user
+
+    section#user-details
+      h2 User Information
+      ul
+        li
+          strong Name: 
+          span= user.name
+        li
+          strong Email: 
+          span= user.email
+        li
+          strong Username: 
+          span= user.username
+        li
+          strong Posts: 
+          span= user.posts.length
+        li 
+          strong Followers: 
+          span= user.followers.length
+        li 
+          strong Following: 
+          span= user.following.length
+        li
+          strong Joined on: 
+          span= user.createdAt.toDateString()
+
+      h2 Posts 
+      ul
+        each post in user.posts
+          li
+            div
+              p
+                strong Content: 
+                span= post.content || 'No content'
+              if post.media
+                img(src=`http://127.0.0.1:5000/${post.media.file}` alt='Post Image' style='width: 200px; height: auto;')
+              if post.video
+                video(controls style='max-width: 100%; height: auto;')
+                  source(src=post.video type='video/mp4')
+                  | Your browser does not support the video tag.
+              p
+                strong Likes: 
+                span= post.likes.length
+              p
+                strong Comments: 
+                span= post.comments.length
+              p
+                strong Created on: 
+                span= post.createdAt.toDateString()
+
+      a(href='/') Back to Dashboard
+
+    footer
+      p &copy; 2024 SyncMedia

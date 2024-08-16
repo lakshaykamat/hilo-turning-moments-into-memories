@@ -25,14 +25,14 @@ LikeSchema.statics.toggleLike = async function (userId, targetId, targetType) {
   } else {
     let isValidTarget = false;
 
-    // Validate that targetId belongs to the correct type
-    if (targetType === "Post") {
-      isValidTarget = await Post.exists({ _id: targetId });
-    } else if (targetType === "Comment") {
-      isValidTarget = await Comment.exists({ _id: targetId });
-    } else if (targetType === "Reply") {
-      isValidTarget = await Reply.exists({ _id: targetId });
+    // Dynamically reference the model based on targetType
+    const TargetModel = mongoose.model(targetType);
+
+    if (!TargetModel) {
+      throw new CustomError(400, `Invalid target type: ${targetType}`);
     }
+
+    isValidTarget = await TargetModel.findById(targetId).lean().exec();
 
     if (isValidTarget) {
       await this.create({ userId, targetId, targetType });

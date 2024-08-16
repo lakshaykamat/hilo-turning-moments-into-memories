@@ -13,19 +13,18 @@ const fs = require("fs").promises;
 
 const createPost = async (req, res, next) => {
   const { content } = req.body;
-  const filePath = req.file ? req.file.path : null; // Get the file path if uploaded
+  const filePath = req.file ? req.file.path : null;
   let fileType = null;
   let metadata = {};
 
   try {
-    // Determine the file type and extract metadata if a file is uploaded
     if (req.file) {
       fileType = req.file.mimetype.startsWith("image/") ? "image" : "video";
 
       if (fileType === "image") {
-        metadata = await getImageMetadata(filePath); // Await metadata extraction
+        metadata = await getImageMetadata(filePath);
       } else if (fileType === "video") {
-        metadata = await getVideoMetadata(filePath); // Await metadata extraction
+        metadata = await getVideoMetadata(filePath);
       }
     }
 
@@ -37,7 +36,6 @@ const createPost = async (req, res, next) => {
       );
     }
 
-    // Create and save the post
     const post = new Post({
       author: req.user._id,
       content,
@@ -131,41 +129,20 @@ const getPosts = async (req, res, next) => {
       return res.status(HttpStatusCode.OK).json(detailedPost);
     }
 
-    // Fetch all posts with author details and sort by creation date
     const posts = await Post.find()
       .sort({ createdAt: -1 })
       .populate({
         path: "author",
-        select: "-password -__v", // Exclude password field
+        select: "-password -__v",
       })
       .select("-__v");
 
-    // Optionally, include likes count or user IDs for each post
-    const postsWithLikes = await Promise.all(
-      posts.map(async (post) => {
-        const likes = await Like.find({
-          targetId: post._id,
-          targetType: "Post",
-        });
-        const comments = await Comment.find({
-          postId: post._id,
-        });
-        const shares = await Comment.find({
-          postId: post._id,
-        });
-        const commentsUserIds = comments.map((comment) => comment.author._id);
-        const sharesUserIds = shares.map((share) => share.userId);
-        const likesUserIds = likes.map((like) => like.userId);
-        return {
-          ...post.toObject(),
-          comments: commentsUserIds,
-          shares: sharesUserIds,
-          likes: likesUserIds, // List of user IDs who liked the post
-        };
-      })
+    const postWithLikesSharesAndComments = await Promise.all(
+      posts.map(async (post) => await post.format())
     );
+    console.log(postWithLikesSharesAndComments);
 
-    res.status(HttpStatusCode.OK).json(postsWithLikes);
+    res.status(HttpStatusCode.OK).json(postWithLikesSharesAndComments);
   } catch (error) {
     next(error);
   }

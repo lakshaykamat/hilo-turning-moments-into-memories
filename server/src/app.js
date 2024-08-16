@@ -3,7 +3,6 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const morgan = require("morgan");
 const cors = require("cors");
-const apiRoutes = require("./routes/index");
 const { errorHandler, notFound } = require("./middleware");
 const logger = require("./config/logger");
 const { getGeoLocation, getSystemInfo, getCurrentTime } = require("./lib/util");
@@ -16,6 +15,8 @@ const PORT = process.env.PORT || 5001;
 
 const app = express();
 connectDatabase();
+app.set("views", path.join(__dirname, "views"));
+app.set("view engine", "pug");
 
 app.use("/uploads", express.static("uploads"));
 app.use(function (req, res, next) {
@@ -41,7 +42,7 @@ app.use(morgan("combined", { stream: accessLogStream }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-app.use("/api/v1", apiRoutes);
+app.use("/", require("./routes/index"));
 app.use(notFound);
 app.use(errorHandler);
 

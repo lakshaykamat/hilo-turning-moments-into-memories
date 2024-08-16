@@ -1,7 +1,12 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Post = require("../models/Post");
-const { HttpStatusCode, CustomError, getGravatar } = require("../lib/util");
+const {
+  HttpStatusCode,
+  CustomError,
+  getGravatar,
+  getJWTToken,
+} = require("../lib/util");
 const bcrypt = require("bcryptjs");
 const Followers = require("../models/Follower");
 const Following = require("../models/Following");
@@ -59,7 +64,6 @@ const registerUser = async (req, res, next) => {
 
     res.status(HttpStatusCode.CREATED).json({ ...response });
   } catch (error) {
-    // Handle errors
     next(error);
   }
 };
@@ -93,16 +97,15 @@ const loginUser = async (req, res, next) => {
       },
     };
 
-    // Sign the token
-    jwt.sign(
-      payload,
-      process.env.JWT_SECRET,
-      { expiresIn: "300h" }, // Token expires in 30 hours
-      (err, token) => {
-        if (err) throw err;
-        res.json({ ...response, token });
-      }
-    );
+    const token = await getJWTToken(payload, "300h");
+
+    if (!token) {
+      throw new CustomError(
+        HttpStatusCode.BAD_REQUEST,
+        "Failed to generate token"
+      );
+    }
+    res.status(HttpStatusCode.OK).json({ ...response, token });
   } catch (error) {
     next(error);
   }
@@ -144,7 +147,6 @@ const findUsers = async (req, res, next) => {
     const { userId, username } = req.query;
 
     if (userId) {
-      // Get user by ID
       const user = await User.findById(userId).select("-password -__v");
 
       if (!user) {
@@ -153,16 +155,9 @@ const findUsers = async (req, res, next) => {
           .json({ message: "User not found" });
       }
 
-      const followerList = await Followers.findOne({ userId: userId });
-      const followingList = await Following.findOne({ userId: userId });
-      res.status(HttpStatusCode.OK).json({
-        ...user.toObject(),
-        following: followingList ? followingList.following : [],
-        followers: followerList ? followerList.followers : [],
-        posts: await user.getPosts(),
-      });
+      const formatedUser = await user.format();
+      res.status(HttpStatusCode.OK).json({ ...formatedUser });
     } else if (username) {
-      // Search users by username
       const users = await User.find({
         username: { $regex: username, $options: "i" },
         _id: { $ne: req.user._id },

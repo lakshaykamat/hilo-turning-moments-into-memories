@@ -1,0 +1,18 @@
+doctype html
+html
+  head
+    title= title
+  body
+    header
+      h1= message
+      p This is a simple Pug template demonstrating user listing and navigation.
+
+    section#user-list
+      h2 Users
+      ul
+        each user in users
+          li
+            a(href=`/user/${user.id}`)= user.username
+
+    footer
+      p &copy; 2024 SyncMedia

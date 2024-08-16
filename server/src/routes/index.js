@@ -5,12 +5,32 @@ const postRoutes = require("./post");
 const messagesRoutes = require("./message");
 const adminRoutes = require("./admin");
 const { isAuthenticated, isAdmin } = require("../middleware");
+const User = require("../models/User");
 const router = express.Router();
 
-router.use("/users", userRouter);
-router.use("/posts", postRoutes);
-router.use("/admin", isAdmin, adminRoutes);
-router.use("/messages", isAuthenticated, messagesRoutes);
-router.use("/chatrooms", isAuthenticated, chatRoomRouter);
+router.use("/api/v1/users", userRouter);
+router.use("/api/v1/posts", postRoutes);
+router.use("/api/v1/admin", isAdmin, adminRoutes);
+router.use("/api/v1/messages", isAuthenticated, messagesRoutes);
+router.use("/api/v1/chatrooms", isAuthenticated, chatRoomRouter);
 
+router.get("/", async (req, res) => {
+  const users = await User.find();
+  res.render("index", {
+    title: "Welcome",
+    message: "Hello there!",
+    users,
+  });
+});
+
+// Route for displaying individual user details
+router.get("/user/:id", async (req, res) => {
+  const user = await User.findOne({ _id: req.params.id });
+  if (user) {
+    const fuser = await user.format();
+    res.render("user", { user: fuser });
+  } else {
+    res.status(404).send("User not found");
+  }
+});
 module.exports = router;
