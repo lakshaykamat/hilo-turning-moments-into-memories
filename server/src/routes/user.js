@@ -1,22 +1,22 @@
 const express = require("express");
 const { isAuthenticated } = require("../middleware");
 const { upload } = require("../config/multer");
-const userController = require("../controller/user");
+const UserController = require("../controller/UserController");
 
 const router = express.Router();
 
-router.get("/", isAuthenticated, userController.find);
+router.get("/", isAuthenticated, UserController.findUsers);
 
 router
-  .post("/register", userController.auth.register)
-  .post("/login", userController.auth.login)
-  .post("/follow/:userId", isAuthenticated, userController.follow);
+  .post("/register", UserController.registerUser)
+  .post("/login", UserController.loginUser)
+  .post("/follow/:userId", isAuthenticated, UserController.followUser);
 
 router.put(
   "/update",
   isAuthenticated,
   upload.single("image"),
-  userController.update
+  UserController.updateUser
 );
 
 module.exports = router;

@@ -1,6 +1,6 @@
 const express = require("express");
 const userRouter = require("./user");
-const chatRoomRouter = require("./chatroom");
+const conversationRoutes = require("./conversation");
 const postRoutes = require("./post");
 const messagesRoutes = require("./message");
 const adminRoutes = require("./admin");
@@ -12,7 +12,7 @@ router.use("/api/v1/users", userRouter);
 router.use("/api/v1/posts", postRoutes);
 router.use("/api/v1/admin", isAdmin, adminRoutes);
 router.use("/api/v1/messages", isAuthenticated, messagesRoutes);
-router.use("/api/v1/chatrooms", isAuthenticated, chatRoomRouter);
+router.use("/api/v1/conversations", isAuthenticated, conversationRoutes);
 
 router.get("/", async (req, res) => {
   const users = await User.find();

@@ -6,7 +6,6 @@ const ffprobe = require("ffprobe");
 const sharp = require("sharp");
 const jwt = require("jsonwebtoken");
 const getGravatar = (email) => {
-  // Generate Gravatar URL
   const url = gravatarUrl(email, { size: 200, default: "identicon" });
   return url;
 };

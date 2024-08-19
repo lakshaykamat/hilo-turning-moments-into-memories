@@ -12,11 +12,79 @@ const fs = require("fs");
 const http = require("http");
 const { Server } = require("socket.io");
 const PORT = process.env.PORT || 5001;
+const compression = require("compression");
+const SocketService = require("./services/SocketService");
+
+class ServerApp {
+  constructor() {
+    this.app = express();
+    this.server = http.createServer(this.app);
+
+    this.connectDatabase();
+    this.configureRoutes();
+    this.configureMiddlewares();
+    this.configureSocket();
+    this.startServer();
+  }
+
+  connectDatabase() {
+    connectDatabase();
+  }
+
+  configureMiddlewares() {
+    this.app.use(compression());
+    this.app.use("/uploads", express.static("uploads"));
+    this.app.use(cors({ origin: true, credentials: true }));
+    this.app.use(
+      morgan("combined", {
+        stream: fs.createWriteStream(path.join("logs", "access.log"), {
+          flags: "a",
+        }),
+      })
+    );
+    this.app.use(bodyParser.json());
+    this.app.use(bodyParser.urlencoded({ extended: true }));
+    this.app.use(notFound);
+    this.app.use(errorHandler);
+  }
+
+  configureRoutes() {
+    this.app.use("/", require("./routes/index"));
+  }
+
+  configureSocket() {
+    this.socketService = new SocketService(this.server);
+  }
+
+  async startServer() {
+    try {
+      this.server.listen(PORT, async () => {
+        const getGeo = await getGeoLocation();
+        const getSys = await getSystemInfo();
+        logger.info(
+          `Server running http://127.0.0.1:${PORT}/ at ${getCurrentTime()} hostname:${
+            getSys.hostname
+          } platform:${getSys.platform} osType:${getSys.osType} IP:${
+            getGeo.ip
+          } city:${getGeo.city},${getGeo.region},${getGeo.country} Timezone:${
+            getGeo.timezone
+          } Org:${getGeo.org}`
+        );
+      });
+    } catch (error) {
+      logger.error(`Error starting server: ${error.message}`);
+    }
+  }
+}
+
+// new ServerApp();
 
 const app = express();
 connectDatabase();
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "pug");
+
+app.use(compression()); // Enable gzip compression
 
 app.use("/uploads", express.static("uploads"));
 app.use(function (req, res, next) {
@@ -75,7 +143,7 @@ io.on("connection", (socket) => {
 
   // Handle send message
   socket.on("sendMessage", (message) => {
-    io.to(message.chatRoom).emit("newMessage", message);
+    io.to(message.conversationId).emit("newMessage", message);
   });
 
   // Handle disconnect
@@ -97,3 +165,4 @@ server.listen(PORT, async () => {
     } Org:${getGeo.org}`
   );
 });
+module.exports = ServerApp;

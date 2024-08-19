@@ -1,35 +1,49 @@
-const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
+const mongoose = require("mongoose");
 
-// Define MessageSchema
-const MessageSchema = new Schema({
-  sender: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  content: { type: String, required: true, maxlength: 1000 }, // Limiting message length
-  chatRoom: { type: Schema.Types.ObjectId, ref: 'ChatRoom', required: true },
-  createdAt: { type: Date, default: Date.now }
+const MessageSchema = new mongoose.Schema(
+  {
+    conversationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Conversation",
+      index: true, // Indexing to speed up fetching messages by conversation
+      required: true,
+    },
+    sender: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true, // Indexing for fast lookups on sent messages
+    },
+    text: {
+      type: String,
+      required: true,
+      trim: true, // Trim any extra spaces for neat storage
+    },
+    media: {
+      type: String, // URL to the media file if any (image, video)
+      default: null,
+    },
+    status: {
+      type: String,
+      enum: ["sent", "delivered", "read"],
+      default: "sent",
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false, // Soft delete feature
+    },
+  },
+  { timestamps: true }
+);
+
+// Virtual property to check if message is read
+MessageSchema.virtual("isRead").get(function () {
+  return this.status === "read";
 });
 
-// Static method to get messages by chat room
-MessageSchema.statics.findByChatRoom = function(chatRoomId) {
-  return this.find({ chatRoom: chatRoomId }).populate('sender', 'username').sort('createdAt');
-};
+// Virtual property to check if message is media
+MessageSchema.virtual("isMedia").get(function () {
+  return this.media !== null;
+});
 
-// Static method to get recent messages in a chat room
-MessageSchema.statics.findRecentMessages = function(chatRoomId, limit = 10) {
-  return this.find({ chatRoom: chatRoomId })
-    .populate('sender', 'username')
-    .sort('-createdAt')
-    .limit(limit);
-};
-
-// Instance method to format message
-MessageSchema.methods.formatMessage = function() {
-  return {
-    id: this._id,
-    sender: this.sender,
-    content: this.content,
-    createdAt: this.createdAt
-  };
-};
-
-module.exports = mongoose.model('Message', MessageSchema);
+module.exports = mongoose.model("Message", MessageSchema);
